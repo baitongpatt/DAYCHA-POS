@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DayCha POS</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700;800;900&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
 :root {
   --orange:     #F5831F;
@@ -665,6 +668,98 @@ CFG.promoActive = CFG.promoActive !== undefined ? CFG.promoActive : true;
 function saveCfg(){ localStorage.setItem('dc_cfg', JSON.stringify(CFG)); }
 
 // ════════════════════════════════════════════════
+// FIREBASE REALTIME DATABASE
+// ════════════════════════════════════════════════
+const FB_CONFIG = {
+  databaseURL: 'https://daycha-pos-default-rtdb.asia-southeast1.firebasedatabase.app'
+};
+let fbApp, fbDb;
+try {
+  fbApp = firebase.initializeApp(FB_CONFIG);
+  fbDb  = firebase.database();
+} catch(e){ console.warn('Firebase init failed', e); }
+
+// เขียนข้อมูลไป Firebase
+function fbSet(path, data){
+  if(!fbDb) return;
+  fbDb.ref(path).set(data).catch(e=>console.warn('fbSet error',e));
+}
+function fbUpdate(path, data){
+  if(!fbDb) return;
+  fbDb.ref(path).update(data).catch(e=>console.warn('fbUpdate error',e));
+}
+function fbPush(path, data){
+  if(!fbDb) return;
+  fbDb.ref(path).push(data).catch(e=>console.warn('fbPush error',e));
+}
+
+// sync สต้อคทั้งหมดไป Firebase
+function syncStockToFb(){
+  if(!fbDb) return;
+  fbSet('stock/main', stockMain);
+  fbSet('stock/pack', stockPack);
+}
+
+// sync สถานะร้านไป Firebase
+function syncShopToFb(){
+  if(!fbDb) return;
+  fbSet('shop', { open:shopOpen, openData:openData||null, cashDrawer });
+}
+
+// ฟัง real-time จาก Firebase แล้วอัปเดต UI
+function listenFirebase(){
+  if(!fbDb) return;
+
+  // ฟังสต้อค
+  fbDb.ref('stock/main').on('value', snap=>{
+    const val = snap.val();
+    if(val && JSON.stringify(val)!==JSON.stringify(stockMain)){
+      stockMain = val;
+      localStorage.setItem('dc_sm', JSON.stringify(stockMain));
+      if(document.getElementById('page-stock').classList.contains('active')) renderStock();
+    }
+  });
+  fbDb.ref('stock/pack').on('value', snap=>{
+    const val = snap.val();
+    if(val && JSON.stringify(val)!==JSON.stringify(stockPack)){
+      stockPack = val;
+      localStorage.setItem('dc_sp', JSON.stringify(stockPack));
+      if(document.getElementById('page-stock').classList.contains('active')) renderStock();
+    }
+  });
+
+  // ฟังสถานะร้าน
+  fbDb.ref('shop').on('value', snap=>{
+    const val = snap.val();
+    if(!val) return;
+    shopOpen   = val.open ?? shopOpen;
+    openData   = val.openData ?? openData;
+    cashDrawer = val.cashDrawer ?? cashDrawer;
+    localStorage.setItem('dc_shop_open', JSON.stringify(shopOpen));
+    localStorage.setItem('dc_open_data', JSON.stringify(openData));
+    localStorage.setItem('dc_cash', JSON.stringify(cashDrawer));
+    updateShopStatus();
+    renderMenu();
+  });
+
+  // ฟังประวัติออเดอร์
+  fbDb.ref('orders').on('value', snap=>{
+    const val = snap.val();
+    if(!val) return;
+    const newHistory = Object.values(val).sort((a,b)=> (a.timestamp||0)-(b.timestamp||0));
+    if(JSON.stringify(newHistory)!==JSON.stringify(orderHistory)){
+      orderHistory = newHistory;
+      localStorage.setItem('dc_hist', JSON.stringify(orderHistory));
+      if(document.getElementById('page-summary').classList.contains('active')) renderSummary();
+    }
+  });
+
+  // แสดง dot sync
+  document.getElementById('status-dot').title = '🔥 Firebase connected';
+  console.log('✅ Firebase listening...');
+}
+
+// ════════════════════════════════════════════════
 // SVG ICONS
 // ════════════════════════════════════════════════
 function getIcon(icon) {
@@ -1018,6 +1113,7 @@ function confirmOpen(){
              date:new Date().toLocaleDateString('th-TH') };
   localStorage.setItem('dc_shop_open','true');
   localStorage.setItem('dc_open_data',JSON.stringify(openData));
+  syncShopToFb();
   closeModal('modal-open');
   updateShopStatus();
   renderMenu();
@@ -1067,6 +1163,7 @@ function confirmClose(){
 
   shopOpen=false;
   localStorage.setItem('dc_shop_open','false');
+  syncShopToFb();
   closeModal('modal-close');
   updateShopStatus();
   renderMenu();
@@ -1315,6 +1412,10 @@ function confirmPay(){
   };
   orderHistory.push(order);
   localStorage.setItem('dc_hist',JSON.stringify(orderHistory));
+  // push ออเดอร์ไป Firebase
+  fbPush('orders', {...order, timestamp: Date.now()});
+  // sync เงินลิ้นชักไป Firebase
+  syncShopToFb();
   sendToSheets({type:'ORDER',...order});
   checkLowStock();
   closeModal('modal-pay');
@@ -1335,6 +1436,7 @@ function deductPack(id,qty){
 function saveStock(){
   localStorage.setItem('dc_sm',JSON.stringify(stockMain));
   localStorage.setItem('dc_sp',JSON.stringify(stockPack));
+  syncStockToFb();
 }
 
 // ════════════════════════════════════════════════
@@ -1652,6 +1754,13 @@ function clearHistory(){
   stockPack = STOCK_PACK_DEFAULTS.map(s=>({...s, current:s.max, startMax:s.max}));
   saveStock();
 
+  // ล้างข้อมูลใน Firebase ด้วย
+  if(fbDb){
+    fbDb.ref('orders').remove();
+    fbSet('shop', { open:false, openData:null, cashDrawer:999 });
+    syncStockToFb();
+  }
+
   // re-render ทุกหน้า
   renderMenu();
   renderCart();
@@ -1742,6 +1851,7 @@ function toast(msg,isErr){
 renderMenu();
 renderCart();
 updateShopStatus();
+listenFirebase();
 </script>
 </body>
 </html>
