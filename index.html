@@ -1,0 +1,1747 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DayCha POS</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700;800;900&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --orange:     #F5831F;
+  --orange-dk:  #D96B08;
+  --orange-lt:  #FFB060;
+  --orange-pale:#FFF3E6;
+  --black:      #111111;
+  --grey-dk:    #2A2A2A;
+  --grey-md:    #555555;
+  --grey-lt:    #F4F4F4;
+  --white:      #FFFFFF;
+  --red:        #E03030;
+  --green:      #1D9E5C;
+  --blue:       #2A7AE2;
+  --border:     #E8E8E8;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans Thai','Inter',sans-serif;background:var(--grey-lt);color:var(--black);min-height:100vh;-webkit-tap-highlight-color:transparent}
+
+/* NAV */
+.nav{background:var(--black);height:54px;display:flex;align-items:center;padding:0 14px;gap:4px;position:sticky;top:0;z-index:200}
+.nav-logo{font-size:18px;font-weight:900;color:var(--orange);margin-right:8px;white-space:nowrap;line-height:1}
+.nav-logo small{color:#888;font-weight:400;font-size:10px;display:block}
+.nav-tabs{display:flex;gap:3px;flex:1;overflow-x:auto;scrollbar-width:none}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{padding:7px 12px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700;color:#777;background:none;border:none;font-family:inherit;white-space:nowrap;transition:all .15s}
+.nav-tab:hover{color:#fff;background:#2a2a2a}
+.nav-tab.active{background:var(--orange);color:#fff}
+.nav-status{display:flex;align-items:center;gap:6px;margin-left:4px}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#444;flex-shrink:0}
+.status-dot.open{background:var(--green);box-shadow:0 0 6px var(--green)}
+.status-dot.syncing{background:var(--orange);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.nav-clock{font-size:11px;color:#666;white-space:nowrap}
+
+/* PAGES */
+.page{display:none}
+.page.active{display:flex}
+
+/* ══ POS ══════════════════════════════════════ */
+#page-pos{height:calc(100vh - 54px);flex-direction:row}
+
+.menu-panel{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:14px;background:#F2F2F2}
+
+/* open-shop banner */
+.open-banner{background:var(--black);border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ob-text{color:#fff;font-size:13px;font-weight:700}
+.ob-text small{color:#888;font-weight:400;font-size:11px;display:block;margin-top:1px}
+.ob-btn{padding:9px 18px;background:var(--orange);border:none;border-radius:8px;color:#fff;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;transition:background .15s}
+.ob-btn:hover{background:var(--orange-dk)}
+.ob-btn.close-btn{background:#333}
+.ob-btn.close-btn:hover{background:#222}
+
+/* promo toggle bar */
+.promo-bar{background:var(--white);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border:2px solid var(--border);gap:8px}
+.promo-bar-text{font-size:12px;font-weight:700;color:var(--grey-md)}
+.promo-bar-text small{font-size:10px;color:#aaa;display:block;font-weight:400;margin-top:1px}
+.toggle-wrap{display:flex;align-items:center;gap:8px}
+.toggle-lbl{font-size:11px;font-weight:700;color:#aaa}
+.toggle-lbl.active-lbl{color:var(--orange)}
+.toggle{position:relative;width:44px;height:24px;cursor:pointer}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
+.toggle-track{position:absolute;inset:0;background:#ddd;border-radius:99px;transition:background .2s}
+.toggle input:checked ~ .toggle-track{background:var(--orange)}
+.toggle-thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.toggle input:checked ~ .toggle-thumb{transform:translateX(20px)}
+
+.cat-label{font-size:11px;font-weight:800;color:var(--grey-md);padding-bottom:6px;border-bottom:2px solid var(--orange);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.menu-card{background:var(--white);border:2px solid transparent;border-radius:12px;padding:10px 8px 8px;cursor:pointer;text-align:center;transition:border-color .15s,transform .12s,box-shadow .15s;box-shadow:0 1px 4px rgba(0,0,0,.08);position:relative;user-select:none}
+.menu-card:hover{border-color:var(--orange);box-shadow:0 4px 16px rgba(0,0,0,.12);transform:translateY(-2px)}
+.menu-card:active{transform:scale(.96)}
+.mc-icon{font-size:26px;margin-bottom:4px;line-height:1;display:flex;align-items:center;justify-content:center;height:34px}
+.mc-icon svg{width:32px;height:32px}
+.mc-name{font-size:11px;font-weight:700;color:var(--black);line-height:1.3}
+.mc-orig{font-size:10px;color:#bbb;text-decoration:line-through;margin-top:2px}
+.mc-price{margin-top:4px;font-size:14px;font-weight:900;color:var(--orange-dk);background:var(--orange-pale);border-radius:6px;padding:2px 4px}
+.mc-badge{position:absolute;top:6px;right:6px;background:var(--red);color:#fff;font-size:8px;font-weight:800;padding:2px 5px;border-radius:4px}
+
+/* ORDER PANEL */
+.order-panel{width:295px;min-width:270px;background:var(--white);border-left:1px solid var(--border);display:flex;flex-direction:column;box-shadow:-3px 0 16px rgba(0,0,0,.06)}
+.order-head{background:var(--black);padding:12px 14px;display:flex;align-items:center;justify-content:space-between}
+.order-head-title{font-size:14px;font-weight:800;color:#fff}
+.order-badge{background:var(--orange);color:#fff;font-size:11px;font-weight:800;padding:2px 9px;border-radius:20px;min-width:24px;text-align:center}
+.order-items{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px}
+.order-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#ccc}
+.oe-icon{font-size:38px}
+.oe-text{font-size:13px;font-weight:600;color:#bbb}
+.order-item{background:var(--grey-lt);border-radius:10px;padding:9px 10px;border:1px solid var(--border)}
+.oi-row1{display:flex;justify-content:space-between;align-items:start;gap:4px}
+.oi-name{font-size:12px;font-weight:700;color:var(--black);flex:1;line-height:1.35}
+.oi-price{font-size:13px;font-weight:800;color:var(--orange-dk);white-space:nowrap}
+.oi-meta{font-size:10px;color:#999;margin-top:2px}
+.oi-controls{display:flex;align-items:center;gap:6px;margin-top:7px}
+.qty-btn{width:26px;height:26px;border-radius:50%;border:2px solid var(--orange);background:none;color:var(--orange);font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:all .12s}
+.qty-btn:hover{background:var(--orange);color:#fff}
+.qty-num{font-size:14px;font-weight:800;min-width:22px;text-align:center}
+.oi-del{margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;color:#ccc;transition:color .12s}
+.oi-del:hover{color:var(--red)}
+.order-foot{padding:10px 12px;border-top:1px solid #eee}
+.total-line{display:flex;justify-content:space-between;font-size:12px;color:#999;padding:2px 0}
+.total-line.grand{font-size:18px;font-weight:900;color:var(--black);border-top:2px solid var(--black);margin-top:5px;padding-top:8px}
+.total-line.grand .tl-val{color:var(--orange-dk)}
+.btn-checkout{width:100%;padding:13px;margin-top:9px;background:var(--orange);border:none;border-radius:10px;color:#fff;font-family:inherit;font-size:15px;font-weight:900;cursor:pointer;transition:background .15s}
+.btn-checkout:hover:not(:disabled){background:var(--orange-dk)}
+.btn-checkout:disabled{opacity:.3;cursor:not-allowed}
+.btn-clear{width:100%;padding:8px;margin-top:5px;background:none;border:1.5px solid #ddd;border-radius:8px;color:#aaa;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .12s}
+.btn-clear:hover{border-color:var(--red);color:var(--red)}
+
+/* ══ OVERLAYS / MODALS ════════════════════════ */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;align-items:center;justify-content:center;padding:16px}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:18px;padding:20px;width:100%;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:900;color:var(--black);margin-bottom:2px;display:flex;align-items:center;gap:8px}
+.modal-title svg{width:24px;height:24px;flex-shrink:0}
+.modal-sub{font-size:12px;color:#aaa;margin-bottom:16px}
+.fixed-note{background:var(--orange-pale);border-radius:10px;padding:12px 14px;margin-bottom:8px;font-size:13px;font-weight:700;color:var(--orange-dk);text-align:center}
+.modal-actions{display:flex;gap:8px;margin-top:8px}
+/* qty picker inside modal */
+.modal-qty-row{display:flex;align-items:center;justify-content:center;gap:14px;background:var(--grey-lt);border-radius:12px;padding:12px;margin-bottom:8px}
+.modal-qty-lbl{font-size:12px;font-weight:700;color:var(--grey-md)}
+.modal-qty-controls{display:flex;align-items:center;gap:10px}
+.mq-btn{width:36px;height:36px;border-radius:50%;border:2.5px solid var(--orange);background:none;color:var(--orange);font-size:20px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:all .12s;line-height:1}
+.mq-btn:hover{background:var(--orange);color:#fff}
+.mq-num{font-size:22px;font-weight:900;min-width:32px;text-align:center;color:var(--black)}
+.modal-subtotal{text-align:center;font-size:13px;color:var(--grey-md);margin-bottom:4px}
+.modal-subtotal strong{color:var(--orange-dk);font-size:16px}
+/* modal back button */
+.modal-back{display:flex;align-items:center;gap:6px;background:none;border:none;color:#aaa;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:0 0 12px;transition:color .12s}
+.modal-back:hover{color:var(--black)}
+.btn-cancel{flex:1;padding:11px;border-radius:9px;background:var(--grey-lt);border:none;color:var(--grey-md);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.btn-confirm{flex:2;padding:11px;border-radius:9px;background:var(--orange);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:900;cursor:pointer;transition:background .15s}
+.btn-confirm:hover{background:var(--orange-dk)}
+.btn-confirm:disabled{opacity:.4;cursor:not-allowed}
+
+/* Open-shop modal */
+.open-modal-title{font-size:18px;font-weight:900;color:var(--black);margin-bottom:4px}
+.open-modal-sub{font-size:12px;color:#aaa;margin-bottom:20px}
+.stock-input-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.sip-row{display:flex;align-items:center;gap:10px;background:var(--grey-lt);border-radius:10px;padding:10px 12px}
+.sip-icon{font-size:22px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center}
+.sip-icon svg{width:30px;height:30px}
+.sip-info{flex:1}
+.sip-name{font-size:13px;font-weight:700;color:var(--black)}
+.sip-unit{font-size:10px;color:#aaa}
+.sip-controls{display:flex;align-items:center;gap:6px}
+.sip-qty-btn{width:30px;height:30px;border-radius:50%;border:2px solid var(--orange);background:none;color:var(--orange);font-size:18px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:all .12s;line-height:1}
+.sip-qty-btn:hover{background:var(--orange);color:#fff}
+.sip-qty{font-size:16px;font-weight:900;min-width:32px;text-align:center}
+.sip-note{font-size:10px;color:#bbb;text-align:center;margin-top:2px}
+
+/* Gallons visual */
+.gallon-vis{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.gallon-dot{width:10px;height:14px;border-radius:2px;background:var(--orange);opacity:.85}
+.gallon-dot.empty{background:#eee}
+
+/* Pay modal */
+.pay-total{text-align:center;background:var(--black);border-radius:12px;padding:16px;margin-bottom:16px}
+.pt-label{font-size:11px;color:#777;font-weight:600}
+.pt-amount{font-size:38px;font-weight:900;color:var(--orange);line-height:1.1}
+.pt-items{font-size:11px;color:#555;margin-top:2px}
+.pay-method-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.pm-opt{border:2px solid var(--border);border-radius:10px;padding:12px 6px;text-align:center;cursor:pointer;transition:all .15s}
+.pm-opt:hover{border-color:var(--orange)}
+.pm-opt.sel{border-color:var(--orange);background:var(--orange-pale)}
+.pm-icon{font-size:22px;margin-bottom:3px}
+.pm-name{font-size:12px;font-weight:700}
+.cash-block{margin-bottom:12px}
+.cash-lbl{font-size:11px;font-weight:700;color:#aaa;margin-bottom:5px}
+.cash-inp{width:100%;padding:10px 12px;background:var(--grey-lt);border:2px solid var(--border);border-radius:9px;color:var(--black);font-family:inherit;font-size:18px;font-weight:800;text-align:right;outline:none;transition:border-color .15s}
+.cash-inp:focus{border-color:var(--orange)}
+.cash-presets{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.cash-pre{padding:4px 9px;border-radius:6px;border:1.5px solid #ddd;background:none;color:#888;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .12s}
+.cash-pre:hover{border-color:var(--orange);color:var(--orange)}
+.change-box{display:flex;justify-content:space-between;align-items:center;background:#F0FFF7;border:2px solid var(--green);border-radius:9px;padding:9px 12px;margin-bottom:12px;font-weight:800}
+.cb-lbl{font-size:13px;color:var(--green)}
+.cb-val{font-size:20px;color:var(--green)}
+.qr-block{background:var(--grey-lt);border-radius:12px;padding:16px;text-align:center;margin-bottom:14px}
+.qr-placeholder{width:130px;height:130px;margin:0 auto 10px;background:#fff;border:3px dashed #ddd;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;color:#ccc}
+.qr-icon{font-size:36px}
+.qr-hint{font-size:9px;font-weight:600}
+.qr-amount{font-size:24px;font-weight:900;color:var(--black)}
+.qr-sub{font-size:11px;color:#aaa;margin-top:3px}
+
+/* Close-shop modal */
+.close-summary{background:var(--grey-lt);border-radius:12px;padding:14px;margin-bottom:16px}
+.cs-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #e8e8e8;font-size:13px}
+.cs-row:last-child{border-bottom:none}
+.cs-lbl{color:#888;font-weight:600}
+.cs-val{font-weight:800;color:var(--black)}
+.cs-val.orange{color:var(--orange-dk)}
+.cs-val.green{color:var(--green)}
+
+/* ══ STOCK PAGE ═══════════════════════════════ */
+#page-stock{flex-direction:column;padding:16px;gap:14px;overflow-y:auto}
+.page-header{display:flex;align-items:center;justify-content:space-between}
+.page-title{font-size:18px;font-weight:900;color:var(--black)}
+.action-btn{padding:8px 16px;border-radius:8px;background:var(--black);border:none;color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s}
+.action-btn:hover{background:#333}
+.action-btn.orange{background:var(--orange)}
+.action-btn.orange:hover{background:var(--orange-dk)}
+.sec-lbl{font-size:11px;font-weight:800;color:var(--grey-md);padding-bottom:5px;border-bottom:2px solid var(--orange);margin-bottom:8px}
+.stock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:8px}
+.stock-card{background:#fff;border-radius:12px;padding:13px;box-shadow:0 1px 4px rgba(0,0,0,.08);border:2px solid transparent;transition:border-color .15s;overflow:hidden;min-width:0}
+.stock-card.warn{border-color:#F0A800}
+.stock-card.low{border-color:var(--red)}
+.sc-name{font-size:13px;font-weight:800;color:var(--black)}
+.sc-unit{font-size:10px;color:#bbb;margin-bottom:8px}
+.sc-bar-bg{background:#F0F0F0;border-radius:99px;height:7px;overflow:hidden;margin-bottom:5px}
+.sc-bar-fill{height:100%;border-radius:99px;transition:width .5s}
+.sc-bar-fill.ok{background:var(--green)}
+.sc-bar-fill.warn{background:#F0A800}
+.sc-bar-fill.low{background:var(--red)}
+.sc-nums{display:flex;justify-content:space-between;font-size:11px;margin-bottom:9px}
+.sc-curr{font-weight:800}
+.sc-curr.ok{color:var(--green)}
+.sc-curr.warn{color:#D49000}
+.sc-curr.low{color:var(--red)}
+.sc-max{color:#ccc}
+.sc-btns{display:flex;gap:6px}
+.sc-btn{flex:1;padding:6px;border-radius:7px;border:1.5px solid #e8e8e8;background:none;color:#aaa;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .12s}
+.sc-btn:hover{border-color:var(--orange);color:var(--orange)}
+.sc-btn.restock{border-color:var(--green);color:var(--green)}
+.sc-btn.restock:hover{background:#F0FFF7}
+
+/* ══ SUMMARY PAGE ═════════════════════════════ */
+#page-summary{flex-direction:column;padding:16px;gap:14px;overflow-y:auto}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.kpi-card{background:#fff;border-radius:12px;padding:14px 13px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.kpi-label{font-size:10px;font-weight:700;color:#bbb;margin-bottom:5px}
+.kpi-value{font-size:24px;font-weight:900;color:var(--black);line-height:1}
+.kpi-value.orange{color:var(--orange-dk)}
+.kpi-sub{font-size:10px;color:#ccc;margin-top:3px}
+.chart-card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.chart-card-title{font-size:13px;font-weight:800;color:var(--black);margin-bottom:14px}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.bar-name{font-size:11px;color:#888;width:130px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{flex:1;background:var(--grey-lt);border-radius:99px;height:22px;overflow:hidden}
+.bar-fill{height:100%;border-radius:99px;background:var(--orange);display:flex;align-items:center;justify-content:flex-end;padding-right:7px;transition:width .6s}
+.bar-n{font-size:11px;font-weight:800;color:#fff}
+.hist-table{width:100%;border-collapse:collapse;font-size:12px}
+.hist-table th{text-align:left;padding:6px 10px;color:#bbb;font-weight:700;font-size:10px;border-bottom:1.5px solid #f0f0f0}
+.hist-table td{padding:9px 10px;border-bottom:1px solid #f5f5f5;color:var(--black)}
+.hist-table tr:last-child td{border-bottom:none}
+.hist-table tr:hover td{background:var(--orange-pale)}
+.pay-badge{display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:800}
+.pay-badge.cash{background:#E8F5E9;color:var(--green)}
+.pay-badge.qr{background:#E3F2FD;color:var(--blue)}
+.pay-badge.transfer{background:var(--orange-pale);color:var(--orange-dk)}
+.pay-badge.card{background:#F3E5F5;color:#7B1FA2}
+
+/* ══ SETTINGS PAGE ════════════════════════════ */
+#page-settings{flex-direction:column;padding:16px;gap:14px;overflow-y:auto}
+.setting-card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.setting-card-title{font-size:13px;font-weight:800;color:var(--black);margin-bottom:14px;padding-bottom:8px;border-bottom:1.5px solid #f0f0f0}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5;gap:12px}
+.setting-row:last-child{border-bottom:none}
+.sr-info{}
+.sr-label{font-size:13px;font-weight:700;color:var(--black)}
+.sr-sub{font-size:11px;color:#aaa;margin-top:1px}
+.sr-input{padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;color:var(--black);outline:none;width:200px;transition:border-color .15s}
+.sr-input:focus{border-color:var(--orange)}
+.sr-input.sm{width:90px;text-align:right}
+.save-btn{padding:9px 20px;background:var(--orange);border:none;border-radius:8px;color:#fff;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;transition:background .15s}
+.save-btn:hover{background:var(--orange-dk)}
+.save-btn.grey{background:var(--grey-lt);color:var(--grey-md)}
+.save-btn.grey:hover{background:#e0e0e0}
+.sync-row{display:flex;align-items:center;gap:8px;padding:8px 0;font-size:12px;color:#888}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#ddd;flex-shrink:0}
+.sync-dot.ok{background:var(--green)}
+.sync-dot.err{background:var(--red)}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--black);color:#fff;padding:10px 20px;border-radius:9px;font-size:13px;font-weight:700;opacity:0;pointer-events:none;z-index:9999;transition:opacity .25s;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.25)}
+.toast.show{opacity:1}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px}
+
+@media(max-width:620px){
+  #page-pos{flex-direction:column}
+  .menu-panel{height:55vh}
+  .order-panel{width:100%;height:45vh;box-shadow:0 -4px 16px rgba(0,0,0,.1)}
+  .nav-tab{padding:6px 9px;font-size:11px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-logo">DAYCHA <small>ชาดี Everyday</small></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="gotoPage('pos',this)">🧋 สั่งซื้อ</button>
+    <button class="nav-tab" onclick="gotoPage('stock',this)">📦 สต้อค</button>
+    <button class="nav-tab" onclick="gotoPage('summary',this)">📊 ยอดขาย</button>
+    <button class="nav-tab" onclick="gotoPage('settings',this)">⚙️ ตั้งค่า</button>
+  </div>
+  <div class="nav-status">
+    <div class="status-dot" id="status-dot"></div>
+    <div class="nav-clock" id="clock"></div>
+  </div>
+</nav>
+
+<!-- POS PAGE -->
+<div class="page active" id="page-pos">
+  <div class="menu-panel" id="menu-panel"></div>
+  <div class="order-panel">
+    <div class="order-head">
+      <div class="order-head-title">รายการสั่ง</div>
+      <div class="order-badge" id="order-badge">0</div>
+    </div>
+    <div class="order-items" id="order-items">
+      <div class="order-empty"><div class="oe-icon">🧋</div><div class="oe-text">ยังไม่มีรายการ</div></div>
+    </div>
+    <div class="order-foot">
+      <div class="total-line"><span>รวม</span><span id="subtotal-lbl">฿0</span></div>
+      <div class="total-line grand"><span>ยอดรวม</span><span class="tl-val" id="grand-lbl">฿0</span></div>
+      <button class="btn-checkout" id="btn-checkout" disabled onclick="openPay()">ชำระเงิน</button>
+      <button class="btn-clear" onclick="clearCart()">ล้างรายการ</button>
+    </div>
+  </div>
+</div>
+
+<!-- STOCK PAGE -->
+<div class="page" id="page-stock">
+  <div class="page-header">
+    <div class="page-title">📦 สต้อควัตถุดิบ</div>
+  </div>
+  <div><div class="sec-lbl" style="margin-bottom:8px">วัตถุดิบหลัก</div><div class="stock-grid" id="stock-main-grid"></div></div>
+  <div><div class="sec-lbl" style="margin-bottom:8px">บรรจุภัณฑ์</div><div class="stock-grid" id="stock-pack-grid"></div></div>
+</div>
+
+<!-- SUMMARY PAGE -->
+<div class="page" id="page-summary">
+  <div class="page-header">
+    <div class="page-title">📊 ยอดขายวันนี้</div>
+    <button class="action-btn orange" onclick="exportCSV()">⬇ Export</button>
+  </div>
+  <div class="kpi-grid" id="kpi-grid"></div>
+  <div class="chart-card">
+    <div class="chart-card-title">เมนูขายดี</div>
+    <div id="best-chart"></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-card-title">💳 สรุปยอดแต่ละช่องทาง</div>
+    <div id="payment-breakdown"></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-card-title">ประวัติออเดอร์</div>
+    <div style="overflow-x:auto">
+      <table class="hist-table">
+        <thead><tr><th>เวลา</th><th>รายการ</th><th>ยอด</th><th>ชำระ</th></tr></thead>
+        <tbody id="hist-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS PAGE -->
+<div class="page" id="page-settings">
+  <div class="page-title">⚙️ ตั้งค่าระบบ</div>
+
+  <div class="setting-card">
+    <div class="setting-card-title">🔗 เชื่อมต่อ Google Sheets</div>
+    <div class="setting-row">
+      <div class="sr-info"><div class="sr-label">Script URL</div><div class="sr-sub">URL จาก Google Apps Script ที่ deploy แล้ว</div></div>
+    </div>
+    <input class="sr-input" id="cfg-script-url" placeholder="https://script.google.com/macros/s/..." style="width:100%;margin-bottom:8px">
+    <div class="sync-row">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-status-text">ยังไม่ได้ตั้งค่า</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="save-btn" onclick="saveScriptUrl()">บันทึก</button>
+      <button class="save-btn grey" onclick="testConnection()">ทดสอบการเชื่อมต่อ</button>
+    </div>
+  </div>
+
+  <div class="setting-card">
+    <div class="setting-card-title">📱 LINE Notify</div>
+    <div class="setting-row">
+      <div class="sr-info"><div class="sr-label">Token</div><div class="sr-sub">ใส่ token จาก notify.line.me</div></div>
+    </div>
+    <input class="sr-input" id="cfg-line-token" placeholder="วาง LINE Notify Token ที่นี่" style="width:100%;margin-bottom:10px">
+    <div class="setting-row" style="padding-top:0">
+      <div class="sr-info"><div class="sr-label">แจ้งเตือนเมื่อสต้อคต่ำกว่า</div><div class="sr-sub">% ของสต้อคตั้งต้น</div></div>
+      <input class="sr-input sm" id="cfg-warn-pct" type="number" value="20" min="5" max="50">
+    </div>
+    <button class="save-btn" onclick="saveLineSettings()" style="margin-top:10px">บันทึก</button>
+  </div>
+
+  <div class="setting-card">
+    <div class="setting-card-title">🏷️ โปรโมชั่น Slushy</div>
+    <div class="setting-row">
+      <div class="sr-info"><div class="sr-label">ชาไทยสลัชชี่</div><div class="sr-sub">ราคาปกติ / ราคาโปร</div></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input class="sr-input sm" id="cfg-slushy-thai-normal" type="number" value="65" placeholder="ปกติ">
+        <span style="color:#aaa;font-size:12px">/</span>
+        <input class="sr-input sm" id="cfg-slushy-thai-promo" type="number" value="59" placeholder="โปร">
+      </div>
+    </div>
+    <div class="setting-row">
+      <div class="sr-info"><div class="sr-label">เก๊กฮวยสลัชชี่</div><div class="sr-sub">ราคาปกติ / ราคาโปร</div></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input class="sr-input sm" id="cfg-slushy-chrys-normal" type="number" value="50" placeholder="ปกติ">
+        <span style="color:#aaa;font-size:12px">/</span>
+        <input class="sr-input sm" id="cfg-slushy-chrys-promo" type="number" value="45" placeholder="โปร">
+      </div>
+    </div>
+    <button class="save-btn" onclick="savePromoSettings()" style="margin-top:10px">บันทึก & รีโหลดเมนู</button>
+  </div>
+
+  <div class="setting-card">
+    <div class="setting-card-title">🗄️ ข้อมูล</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="save-btn grey" onclick="clearHistory()">ล้างประวัติออเดอร์วันนี้</button>
+      <button class="save-btn grey" onclick="exportCSV()">Export CSV</button>
+    </div>
+  </div>
+</div>
+
+<!-- OPEN SHOP MODAL -->
+<div class="overlay" id="modal-open">
+  <div class="modal">
+    <div class="open-modal-title">☀️ เปิดร้านวันนี้</div>
+    <div class="open-modal-sub" id="open-modal-date"></div>
+    <div style="font-size:12px;font-weight:700;color:#aaa;margin-bottom:10px">🧴 น้ำที่เตรียมมาวันนี้ (ลิตร)</div>
+    <div class="stock-input-grid">
+      <div class="sip-row">
+        <div class="sip-icon" id="icon-tea"></div>
+        <div class="sip-info"><div class="sip-name">น้ำชาไทย</div><div class="sip-unit">ลิตร</div></div>
+        <div class="sip-controls" style="gap:6px">
+          <button class="sip-qty-btn" onclick="adjStock('tea',-1)">−</button>
+          <input type="number" id="tea-qty" value="4" min="0" max="40" step="0.5"
+            style="width:60px;text-align:center;padding:5px 2px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:15px;font-weight:800;color:var(--black);outline:none"
+            oninput="setStock('tea',this.value)" onfocus="this.select()">
+          <button class="sip-qty-btn" onclick="adjStock('tea',1)">+</button>
+        </div>
+      </div>
+      <div class="sip-row">
+        <div class="sip-icon" id="icon-black"></div>
+        <div class="sip-info"><div class="sip-name">น้ำชาดำ</div><div class="sip-unit">ลิตร</div></div>
+        <div class="sip-controls" style="gap:6px">
+          <button class="sip-qty-btn" onclick="adjStock('black',-1)">−</button>
+          <input type="number" id="black-qty" value="4" min="0" max="40" step="0.5"
+            style="width:60px;text-align:center;padding:5px 2px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:15px;font-weight:800;color:var(--black);outline:none"
+            oninput="setStock('black',this.value)" onfocus="this.select()">
+          <button class="sip-qty-btn" onclick="adjStock('black',1)">+</button>
+        </div>
+      </div>
+      <div class="sip-row">
+        <div class="sip-icon" id="icon-chrys"></div>
+        <div class="sip-info"><div class="sip-name">น้ำเก๊กฮวย</div><div class="sip-unit">ลิตร</div></div>
+        <div class="sip-controls" style="gap:6px">
+          <button class="sip-qty-btn" onclick="adjStock('chrys',-1)">−</button>
+          <input type="number" id="chrys-qty" value="4" min="0" max="40" step="0.5"
+            style="width:60px;text-align:center;padding:5px 2px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:15px;font-weight:800;color:var(--black);outline:none"
+            oninput="setStock('chrys',this.value)" onfocus="this.select()">
+          <button class="sip-qty-btn" onclick="adjStock('chrys',1)">+</button>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:#aaa;margin-bottom:10px;margin-top:4px">📦 บรรจุภัณฑ์วันนี้</div>
+    <div class="stock-input-grid">
+      <div class="sip-row">
+        <div class="sip-icon" id="icon-cup16"></div>
+        <div class="sip-info"><div class="sip-name">แก้ว 16oz</div><div class="sip-unit">ใบ</div></div>
+        <div class="sip-controls" style="gap:6px">
+          <button class="sip-qty-btn" onclick="adjPack('cup16',-1)">−</button>
+          <input type="number" id="open-cup16" value="50" min="0"
+            style="width:56px;text-align:center;padding:5px 2px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:15px;font-weight:800;color:var(--black);outline:none"
+            oninput="setPack('cup16',this.value)" onfocus="this.select()">
+          <button class="sip-qty-btn" onclick="adjPack('cup16',1)">+</button>
+        </div>
+      </div>
+      <div class="sip-row">
+        <div class="sip-icon" id="icon-cup20"></div>
+        <div class="sip-info"><div class="sip-name">แก้ว 20oz</div><div class="sip-unit">ใบ</div></div>
+        <div class="sip-controls" style="gap:6px">
+          <button class="sip-qty-btn" onclick="adjPack('cup20',-1)">−</button>
+          <input type="number" id="open-cup20" value="50" min="0"
+            style="width:56px;text-align:center;padding:5px 2px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:15px;font-weight:800;color:var(--black);outline:none"
+            oninput="setPack('cup20',this.value)" onfocus="this.select()">
+          <button class="sip-qty-btn" onclick="adjPack('cup20',1)">+</button>
+        </div>
+      </div>
+      <div class="sip-row">
+        <div class="sip-icon" id="icon-bottle"></div>
+        <div class="sip-info"><div class="sip-name">ขวด 200ml</div><div class="sip-unit">ขวด</div></div>
+        <div class="sip-controls" style="gap:6px">
+          <button class="sip-qty-btn" onclick="adjPack('bottle',-1)">−</button>
+          <input type="number" id="open-bottle" value="20" min="0"
+            style="width:56px;text-align:center;padding:5px 2px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:15px;font-weight:800;color:var(--black);outline:none"
+            oninput="setPack('bottle',this.value)" onfocus="this.select()">
+          <button class="sip-qty-btn" onclick="adjPack('bottle',1)">+</button>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:#aaa;margin-bottom:10px;margin-top:4px">💵 เงินสดในลิ้นชัก</div>
+    <div class="sip-row">
+      <div class="sip-icon">💵</div>
+      <div class="sip-info"><div class="sip-name">เงินสดสำหรับทอน</div><div class="sip-unit">บาท</div></div>
+      <div class="sip-controls" style="gap:8px">
+        <input type="number" id="open-cash" value="999" min="0"
+          style="width:80px;text-align:center;padding:6px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:16px;font-weight:800;color:var(--black);outline:none">
+      </div>
+    </div>
+    <button class="btn-confirm" style="width:100%;padding:13px;font-size:15px;margin-top:12px" onclick="confirmOpen()">เปิดร้านเลย ☀️</button>
+  </div>
+</div>
+
+<!-- CLOSE SHOP MODAL -->
+<div class="overlay" id="modal-close">
+  <div class="modal">
+    <div class="open-modal-title">🌙 ปิดร้านวันนี้</div>
+    <div class="open-modal-sub">สรุปยอดประจำวัน</div>
+    <div class="close-summary" id="close-summary"></div>
+    <div style="font-size:12px;font-weight:700;color:#aaa;margin-bottom:8px">น้ำที่เหลือจริง (ถ้าไม่ตรงกับระบบ แก้ได้เลย)</div>
+    <div class="stock-input-grid" style="margin-bottom:16px">
+      <div class="sip-row">
+        <div class="sip-icon" id="close-icon-tea"></div>
+        <div class="sip-info"><div class="sip-name">น้ำชาไทยเหลือจริง</div><div class="sip-unit">ลิตร</div></div>
+        <input class="sr-input sm" id="close-tea-actual" type="number" step="0.1" placeholder="ลิตร">
+      </div>
+      <div class="sip-row">
+        <div class="sip-icon" id="close-icon-black"></div>
+        <div class="sip-info"><div class="sip-name">น้ำชาดำเหลือจริง</div><div class="sip-unit">ลิตร</div></div>
+        <input class="sr-input sm" id="close-black-actual" type="number" step="0.1" placeholder="ลิตร">
+      </div>
+      <div class="sip-row">
+        <div class="sip-icon" id="close-icon-chrys"></div>
+        <div class="sip-info"><div class="sip-name">น้ำเก๊กฮวยเหลือจริง</div><div class="sip-unit">ลิตร</div></div>
+        <input class="sr-input sm" id="close-chrys-actual" type="number" step="0.1" placeholder="ลิตร">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-close')">ยกเลิก</button>
+      <button class="btn-confirm" onclick="confirmClose()">ยืนยันปิดร้าน 🌙</button>
+    </div>
+  </div>
+</div>
+
+<!-- SIZE MODAL -->
+<div class="overlay" id="modal-size">
+  <div class="modal">
+    <button class="modal-back" onclick="closeModal('modal-size')">← กลับไปเมนู</button>
+    <div class="modal-title" id="m-title"></div>
+    <div class="modal-sub" id="m-sub"></div>
+    <div id="m-size-area"></div>
+    <div class="modal-qty-row">
+      <div class="modal-qty-lbl">จำนวน</div>
+      <div class="modal-qty-controls">
+        <button class="mq-btn" onclick="adjModalQty(-1)">−</button>
+        <div class="mq-num" id="modal-qty">1</div>
+        <button class="mq-btn" onclick="adjModalQty(1)">+</button>
+      </div>
+    </div>
+    <div class="modal-subtotal" id="modal-subtotal">รวม <strong>฿0</strong></div>
+    <div class="modal-actions" style="margin-top:10px">
+      <button class="btn-cancel" onclick="closeModal('modal-size')">ยกเลิก</button>
+      <button class="btn-confirm" onclick="addToCart()">เพิ่มลงตะกร้า</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAY MODAL -->
+<div class="overlay" id="modal-pay">
+  <div class="modal">
+    <div class="pay-total">
+      <div class="pt-label">ยอดที่ต้องชำระ</div>
+      <div class="pt-amount" id="pay-amt">฿0</div>
+      <div class="pt-items" id="pay-items-lbl"></div>
+    </div>
+    <div class="pay-method-row">
+      <div class="pm-opt sel" onclick="selPay(this,'cash')"><div class="pm-icon">💵</div><div class="pm-name">เงินสด</div></div>
+      <div class="pm-opt" onclick="selPay(this,'qr')"><div class="pm-icon">📱</div><div class="pm-name">QR Code</div></div>
+      <div class="pm-opt" onclick="selPay(this,'transfer')"><div class="pm-icon">🏦</div><div class="pm-name">โอนเงิน</div></div>
+      <div class="pm-opt" onclick="selPay(this,'card')"><div class="pm-icon">💳</div><div class="pm-name">บัตร</div></div>
+    </div>
+    <div id="pay-cash-sec" class="cash-block">
+      <div class="cash-lbl">รับเงินมา (บาท)</div>
+      <input class="cash-inp" type="number" id="cash-inp" placeholder="0" oninput="calcChange()">
+      <div class="cash-presets">
+        <button class="cash-pre" onclick="setCash(50)">50</button>
+        <button class="cash-pre" onclick="setCash(100)">100</button>
+        <button class="cash-pre" onclick="setCash(200)">200</button>
+        <button class="cash-pre" onclick="setCash(500)">500</button>
+        <button class="cash-pre" onclick="setCash(1000)">1,000</button>
+      </div>
+    </div>
+    <div class="change-box" id="change-box" style="display:none">
+      <span class="cb-lbl">เงินทอน</span><span class="cb-val" id="change-val">฿0</span>
+    </div>
+    <div id="pay-qr-sec" class="qr-block" style="display:none">
+      <div class="qr-placeholder"><div class="qr-icon">⬜</div><div class="qr-hint">วาง QR PromptPay ที่นี่</div></div>
+      <div class="qr-amount" id="qr-amt">฿0</div>
+      <div class="qr-sub">ลูกค้าสแกน QR ของร้าน แล้วโอนยอดด้านบน</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-pay')">ยกเลิก</button>
+      <button class="btn-confirm" onclick="confirmPay()">ยืนยันชำระ ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESTOCK LIQUID MODAL -->
+<div class="overlay" id="modal-restock-liquid">
+  <div class="modal">
+    <div class="modal-title" id="restock-title">เติมน้ำ</div>
+    <div class="modal-sub" id="restock-sub"></div>
+    <div class="sip-row" style="margin-bottom:12px;background:var(--grey-lt);border-radius:10px;padding:10px 12px">
+      <div class="sip-icon" id="restock-icon"></div>
+      <div class="sip-info">
+        <div class="sip-name" id="restock-name"></div>
+        <div class="sip-unit">คงเหลือ: <span id="restock-current"></span> ลิตร</div>
+      </div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:#aaa;margin-bottom:8px" id="restock-action-label">เพิ่มกี่ลิตร?</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px">
+      <button class="sip-qty-btn" style="width:40px;height:40px;font-size:20px" onclick="adjRestockQty(-1)">−</button>
+      <input type="number" id="restock-qty" value="0.5" min="0" max="40" step="0.5"
+        style="width:80px;text-align:center;padding:8px 4px;border:2px solid var(--orange);border-radius:10px;font-family:inherit;font-size:20px;font-weight:900;color:var(--black);outline:none"
+        onfocus="this.select()">
+      <button class="sip-qty-btn" style="width:40px;height:40px;font-size:20px" onclick="adjRestockQty(1)">+</button>
+    </div>
+    <div class="cash-presets" style="justify-content:center;margin-bottom:14px">
+      <button class="cash-pre" onclick="setRestockQty(0.5)">0.5</button>
+      <button class="cash-pre" onclick="setRestockQty(1)">1</button>
+      <button class="cash-pre" onclick="setRestockQty(1.5)">1.5</button>
+      <button class="cash-pre" onclick="setRestockQty(2)">2</button>
+      <button class="cash-pre" onclick="setRestockQty(4)">4</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-restock-liquid')">ยกเลิก</button>
+      <button class="btn-confirm" onclick="confirmRestockLiquid()">ยืนยัน ✓</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════
+// CONFIG (saved in localStorage)
+// ════════════════════════════════════════════════
+let CFG = JSON.parse(localStorage.getItem('dc_cfg') || '{}');
+CFG.scriptUrl   = CFG.scriptUrl   || '';
+CFG.lineToken   = CFG.lineToken   || '';
+CFG.warnPct     = CFG.warnPct     || 20;
+CFG.slushyThaiNormal = CFG.slushyThaiNormal || 65;
+CFG.slushyThaiPromo  = CFG.slushyThaiPromo  || 59;
+CFG.slushyChrysNormal= CFG.slushyChrysNormal|| 50;
+CFG.slushyChrysPromo = CFG.slushyChrysPromo || 45;
+CFG.promoActive = CFG.promoActive !== undefined ? CFG.promoActive : true;
+
+function saveCfg(){ localStorage.setItem('dc_cfg', JSON.stringify(CFG)); }
+
+// ════════════════════════════════════════════════
+// SVG ICONS
+// ════════════════════════════════════════════════
+function getIcon(icon) {
+  if (!icon.startsWith('svg:')) return `<span style="font-size:28px;line-height:1">${icon}</span>`;
+  const key = icon.replace('svg:', '');
+
+  const COLORS = {
+    orange: '#F5831F', brown: '#7B4A2D', yellow: '#F5C842', green: '#3DAA5C',
+  };
+
+  // เกล็ดหิมะ
+  if (key.startsWith('snowflake_')) {
+    const c = COLORS[key.split('_')[1]] || '#888';
+    return `<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="16" y1="3" x2="16" y2="29" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="3" y1="16" x2="29" y2="16" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="6.5" y1="6.5" x2="25.5" y2="25.5" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="25.5" y1="6.5" x2="6.5" y2="25.5" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="16" y1="3" x2="12" y2="7" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+      <line x1="16" y1="3" x2="20" y2="7" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+      <line x1="16" y1="29" x2="12" y2="25" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+      <line x1="16" y1="29" x2="20" y2="25" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+      <line x1="3" y1="16" x2="7" y2="12" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+      <line x1="3" y1="16" x2="7" y2="20" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+      <line x1="29" y1="16" x2="25" y2="12" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+      <line x1="29" y1="16" x2="25" y2="20" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="16" cy="16" r="2.5" fill="${c}"/>
+    </svg>`;
+  }
+
+  // แก้วเครื่องดื่ม
+  if (key.startsWith('cup_')) {
+    const c = COLORS[key.split('_')[1]] || '#888';
+    const cl = c + '55'; // light fill
+    return `<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M8 6 L10 27 Q10 28 11 28 L21 28 Q22 28 22 27 L24 6 Z" fill="${cl}" stroke="${c}" stroke-width="1.8" stroke-linejoin="round"/>
+      <rect x="7" y="4" width="18" height="3" rx="1.5" fill="${c}"/>
+      <line x1="16" y1="7" x2="16" y2="28" stroke="${c}" stroke-width="1.2" stroke-dasharray="2 2" opacity="0.4"/>
+      <line x1="10.5" y1="15" x2="21.5" y2="15" stroke="${c}" stroke-width="1.2" opacity="0.5"/>
+      <line x1="16" y1="4" x2="14" y2="1.5" stroke="${c}" stroke-width="1.8" stroke-linecap="round"/>
+      <line x1="16" y1="4" x2="18" y2="1.5" stroke="${c}" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>`;
+  }
+
+  // ขวด
+  if (key.startsWith('bottle_')) {
+    const c = COLORS[key.split('_')[1]] || '#888';
+    const cl = c + '55';
+    return `<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="13" y="2" width="6" height="5" rx="1.5" fill="${c}"/>
+      <path d="M11 7 Q8 10 8 14 L8 26 Q8 28 10 28 L22 28 Q24 28 24 26 L24 14 Q24 10 21 7 Z" fill="${cl}" stroke="${c}" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="8" y1="17" x2="24" y2="17" stroke="${c}" stroke-width="1.2" opacity="0.5"/>
+      <line x1="16" y1="17" x2="16" y2="28" stroke="${c}" stroke-width="1.2" stroke-dasharray="2 2" opacity="0.4"/>
+    </svg>`;
+  }
+
+  // ขนมปังแผ่นเดียว
+  if (key.startsWith('toast_')) {
+    const c = COLORS[key.split('_')[1]] || '#888';
+    return `<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="5" y="8" width="22" height="18" rx="3" fill="#F5DEB3" stroke="#C8A46E" stroke-width="1.8"/>
+      <rect x="5" y="8" width="22" height="5" rx="3" fill="#E8C87A" stroke="#C8A46E" stroke-width="1.8"/>
+      <ellipse cx="16" cy="14" rx="8" ry="2.5" fill="${c}" opacity="0.85"/>
+      <ellipse cx="16" cy="17" rx="7" ry="2" fill="${c}" opacity="0.5"/>
+    </svg>`;
+  }
+
+  // Set ขนมปัง + ขวด
+  if (key.startsWith('set_')) {
+    const c = COLORS[key.split('_')[1]] || '#888';
+    const cl = c + '55';
+    return `<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- ขนมปัง -->
+      <rect x="2" y="10" width="16" height="14" rx="2.5" fill="#F5DEB3" stroke="#C8A46E" stroke-width="1.5"/>
+      <rect x="2" y="10" width="16" height="4" rx="2.5" fill="#E8C87A" stroke="#C8A46E" stroke-width="1.5"/>
+      <ellipse cx="10" cy="15" rx="5.5" ry="1.8" fill="${c}" opacity="0.85"/>
+      <!-- ขวด -->
+      <rect x="21" y="3" width="5" height="4" rx="1.2" fill="${c}"/>
+      <path d="M20 7 Q18 9 18 12 L18 27 Q18 28.5 19.5 28.5 L26.5 28.5 Q28 28.5 28 27 L28 12 Q28 9 26 7 Z" fill="${cl}" stroke="${c}" stroke-width="1.5" stroke-linejoin="round"/>
+      <line x1="18" y1="17" x2="28" y2="17" stroke="${c}" stroke-width="1" opacity="0.5"/>
+    </svg>`;
+  }
+
+  return `<span style="font-size:28px">${icon}</span>`;
+}
+
+// ════════════════════════════════════════════════
+// MENU DATA (dynamic prices from CFG)
+// ════════════════════════════════════════════════
+function buildMenu() {
+  const tp = CFG.promoActive, tn = CFG.slushyThaiNormal, tpr = CFG.slushyThaiPromo;
+  const cn = CFG.slushyChrysNormal, cpr = CFG.slushyChrysPromo;
+  return [
+    // Slushy — แก้ว 16oz ใส่น้ำ 500ml
+    { id:'slushy_thai',  name:'ชาไทยสลัชชี่',   cat:'Slushy', icon:'svg:snowflake_orange', tea:500, black:0, chrys:0,
+      sizes:[{oz:'16oz', price:tp?tpr:tn, origPrice:tp?tn:null}], cup16:true },
+    { id:'slushy_chrys', name:'เก๊กฮวยสลัชชี่',  cat:'Slushy', icon:'svg:snowflake_yellow', tea:0,   black:0, chrys:500,
+      sizes:[{oz:'16oz', price:tp?cpr:cn, origPrice:tp?cn:null}], cup16:true },
+
+    // Cold Drink — แก้ว 20oz ใส่น้ำ 175ml
+    { id:'cold_thai',  name:'ชาไทยเย็น',   cat:'Cold Drink', icon:'svg:cup_orange', tea:175, black:0,   chrys:0,
+      sizes:[{oz:'20oz', price:45}], cup20:true, promoGroup:'thai' },
+    { id:'cold_black', name:'ชาดำเย็น',    cat:'Cold Drink', icon:'svg:cup_brown',  tea:0,   black:175, chrys:0,
+      sizes:[{oz:'20oz', price:30}], cup20:true, promoGroup:'mix' },
+    { id:'cold_chrys', name:'เก๊กฮวยเย็น', cat:'Cold Drink', icon:'svg:cup_yellow', tea:0,   black:0,   chrys:175,
+      sizes:[{oz:'20oz', price:30}], cup20:true, promoGroup:'mix' },
+
+    // Bottle — ขวด 200ml ใส่น้ำ 175ml
+    { id:'bottle_thai',  name:'ชาไทย (ขวด)',   cat:'Bottle', icon:'svg:bottle_orange', tea:175, black:0,   chrys:0,
+      sizes:[{oz:'200ml', price:45}], bottle:true, promoGroup:'thai' },
+    { id:'bottle_black', name:'ชาดำ (ขวด)',    cat:'Bottle', icon:'svg:bottle_brown',  tea:0,   black:175, chrys:0,
+      sizes:[{oz:'200ml', price:30}], bottle:true, promoGroup:'mix' },
+    { id:'bottle_chrys', name:'เก๊กฮวย (ขวด)', cat:'Bottle', icon:'svg:bottle_yellow', tea:0,   black:0,   chrys:175,
+      sizes:[{oz:'200ml', price:30}], bottle:true, promoGroup:'mix' },
+
+    // Toast
+    { id:'toast_pandan', name:'ขนมปัง สังขยาใบเตย', cat:'Toast', icon:'svg:toast_green',        tea:0, chrys:0, sizes:[{oz:'แผ่น', price:35}] },
+    { id:'toast_thai',   name:'ขนมปัง ชาไทย',       cat:'Toast', icon:'svg:toast_orange',       tea:0, chrys:0, sizes:[{oz:'แผ่น', price:35}] },
+    { id:'set_pandan',   name:'Set ขนมปัง สังขยา',   cat:'Toast', icon:'svg:set_green',          tea:0, chrys:0, sizes:[{oz:'Set',  price:70}] },
+    { id:'set_thai',     name:'Set ขนมปัง ชาไทย',    cat:'Toast', icon:'svg:set_orange',         tea:0, chrys:0, sizes:[{oz:'Set',  price:70}] },
+  ];
+}
+let MENU = buildMenu();
+const CAT_ICON = {'Slushy':'🧊','Cold Drink':'🍵','Bottle':'🍶','Toast':'🍞'};
+
+// ════════════════════════════════════════════════
+// STOCK
+// ════════════════════════════════════════════════
+const STOCK_MAIN_DEFAULTS = [
+  { id:'tea',   name:'น้ำชาไทย',  unit:'ลิตร', max:4, warn:1, isLiquid:true },
+  { id:'black', name:'น้ำชาดำ',   unit:'ลิตร', max:4, warn:1, isLiquid:true },
+  { id:'chrys', name:'น้ำเก๊กฮวย', unit:'ลิตร', max:4, warn:1, isLiquid:true },
+];
+const STOCK_PACK_DEFAULTS = [
+  { id:'cup16',  name:'แก้ว 16oz',  unit:'ใบ',   max:100, warn:20 },
+  { id:'cup20',  name:'แก้ว 20oz',  unit:'ใบ',   max:100, warn:20 },
+  { id:'bottle', name:'ขวด 200ml',  unit:'ขวด',  max:50,  warn:10 },
+];
+// เงินสดในลิ้นชัก
+let cashDrawer = JSON.parse(localStorage.getItem('dc_cash') || '999');
+// โหลดจาก localStorage แต่กรอง id ที่ไม่อยู่ใน defaults ออก (ล้างของเก่าที่ลบออกไปแล้ว)
+function loadStock(key, defaults){
+  const saved = JSON.parse(localStorage.getItem(key) || 'null');
+  if(!saved) return defaults.map(s=>({...s, current:s.max, startMax:s.max}));
+  const validIds = defaults.map(d=>d.id);
+  const filtered = saved.filter(s=>validIds.includes(s.id));
+  // sync name/unit จาก defaults เสมอ และ ensure startMax มีค่าเสมอ
+  filtered.forEach(s=>{
+    const def = defaults.find(d=>d.id===s.id);
+    if(def){ s.name=def.name; s.unit=def.unit; }
+    if(!s.startMax) s.startMax = s.max || def?.max || 1;
+  });
+  // ถ้าขาด id ใหม่ที่ยังไม่มี ให้เติมเข้าไป
+  defaults.forEach(d=>{ if(!filtered.find(s=>s.id===d.id)) filtered.push({...d, current:d.max, startMax:d.max}); });
+  return filtered;
+}
+let stockMain = loadStock('dc_sm', STOCK_MAIN_DEFAULTS);
+let stockPack = loadStock('dc_sp', STOCK_PACK_DEFAULTS);
+let orderHistory = JSON.parse(localStorage.getItem('dc_hist') || '[]');
+let shopOpen = JSON.parse(localStorage.getItem('dc_shop_open') || 'false');
+let openData = JSON.parse(localStorage.getItem('dc_open_data') || 'null');
+
+// temp open-shop picker — หน่วยเป็นลิตร step 0.5
+let openTea = 4, openBlack = 4, openChrys = 4;
+let openCup16 = 100, openCup20 = 100, openBottle = 50;
+// modal qty
+let modalQty = 1;
+
+// ════════════════════════════════════════════════
+// CLOCK & NAV
+// ════════════════════════════════════════════════
+function tick(){
+  const n=new Date();
+  document.getElementById('clock').textContent =
+    n.toLocaleDateString('th-TH',{day:'2-digit',month:'short'})+' '+
+    n.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+}
+setInterval(tick,10000); tick();
+
+function gotoPage(name,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='stock')    renderStock();
+  if(name==='summary')  renderSummary();
+  if(name==='settings') loadSettingsUI();
+}
+
+function updateShopStatus(){
+  const dot = document.getElementById('status-dot');
+  dot.className = 'status-dot ' + (shopOpen ? 'open' : '');
+}
+
+// ════════════════════════════════════════════════
+// MENU RENDER
+// ════════════════════════════════════════════════
+function renderMenu(){
+  MENU = buildMenu();
+  const cats=[...new Set(MENU.map(m=>m.cat))];
+  let html = '';
+
+  // Banner: open/close shop
+  if(!shopOpen){
+    html += `<div class="open-banner">
+      <div class="ob-text">ยังไม่ได้เปิดร้าน<small>กดเปิดร้านเพื่อเริ่มขาย</small></div>
+      <button class="ob-btn" onclick="startOpenShop()">☀️ เปิดร้าน</button>
+    </div>`;
+  } else {
+    html += `<div class="open-banner">
+      <div class="ob-text">ร้านเปิดอยู่ 🟢<small>${openData ? 'ชา '+openData.teaL+'L · เก๊กฮวย '+openData.chrysL+'L' : ''}</small></div>
+      <button class="ob-btn close-btn" onclick="startCloseShop()">🌙 ปิดร้าน</button>
+    </div>`;
+  }
+
+  // Promo toggle for Slushy
+  html += `<div class="promo-bar">
+    <div class="promo-bar-text">โปร Slushy
+      <small>ชาไทย ฿${CFG.slushyThaiPromo} (ปกติ ฿${CFG.slushyThaiNormal}) · เก๊กฮวย ฿${CFG.slushyChrysPromo} (ปกติ ฿${CFG.slushyChrysNormal})</small>
+    </div>
+    <div class="toggle-wrap">
+      <span class="toggle-lbl ${!CFG.promoActive?'active-lbl':''}">ปกติ</span>
+      <label class="toggle">
+        <input type="checkbox" ${CFG.promoActive?'checked':''} onchange="togglePromo(this.checked)">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+      <span class="toggle-lbl ${CFG.promoActive?'active-lbl':''}">โปร</span>
+    </div>
+  </div>`;
+
+  cats.forEach(cat=>{
+    const items=MENU.filter(m=>m.cat===cat);
+    html+=`<div class="cat-block">
+      <div class="cat-label"><span>${CAT_ICON[cat]||'☕'}</span>${cat}</div>
+      <div class="menu-grid">${items.map(m=>{
+        const sz=m.sizes[0];
+        const hasPromo=sz.origPrice&&sz.origPrice!==sz.price;
+        return `<div class="menu-card" onclick="openModal('${m.id}')">
+          ${hasPromo?'<div class="mc-badge">โปร</div>':''}
+          <div class="mc-icon">${getIcon(m.icon)}</div>
+          <div class="mc-name">${m.name}</div>
+          ${hasPromo?`<div class="mc-orig">฿${sz.origPrice}</div>`:''}
+          <div class="mc-price">฿${sz.price}</div>
+        </div>`;
+      }).join('')}</div>
+    </div>`;
+  });
+  document.getElementById('menu-panel').innerHTML=html;
+}
+
+function togglePromo(on){
+  CFG.promoActive=on; saveCfg(); renderMenu();
+  toast(on ? '✓ เปิดโปร Slushy' : '✓ ใช้ราคาปกติ Slushy');
+}
+
+// ════════════════════════════════════════════════
+// OPEN SHOP
+// ════════════════════════════════════════════════
+function startOpenShop(){
+  openTea=4; openBlack=4; openChrys=4;
+  openCup16=50; openCup20=50; openBottle=20;
+  const d=new Date();
+  document.getElementById('open-modal-date').textContent =
+    d.toLocaleDateString('th-TH',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  updateGallonUI();
+  document.getElementById('open-cup16').value=openCup16;
+  document.getElementById('open-cup20').value=openCup20;
+  document.getElementById('open-bottle').value=openBottle;
+
+  // inject SVG icons เหมือนหน้าสั่งซื้อ
+  document.getElementById('icon-tea').innerHTML   = getIcon('svg:cup_orange');
+  document.getElementById('icon-black').innerHTML = getIcon('svg:cup_brown');
+  document.getElementById('icon-chrys').innerHTML = getIcon('svg:cup_yellow');
+  document.getElementById('icon-cup16').innerHTML = getIcon('svg:cup_orange');
+  document.getElementById('icon-cup20').innerHTML = getIcon('svg:cup_orange');
+  document.getElementById('icon-bottle').innerHTML= getIcon('svg:bottle_orange');
+
+  document.getElementById('modal-open').classList.add('open');
+}
+
+function adjPack(type, delta){
+  if(type==='cup16')  openCup16  = Math.max(0, openCup16  + delta);
+  if(type==='cup20')  openCup20  = Math.max(0, openCup20  + delta);
+  if(type==='bottle') openBottle = Math.max(0, openBottle + delta);
+  document.getElementById('open-cup16').value = openCup16;
+  document.getElementById('open-cup20').value = openCup20;
+  document.getElementById('open-bottle').value = openBottle;
+}
+
+function setPack(type, val){
+  const n = parseInt(val) || 0;
+  if(type==='cup16')  openCup16  = Math.max(0, n);
+  if(type==='cup20')  openCup20  = Math.max(0, n);
+  if(type==='bottle') openBottle = Math.max(0, n);
+}
+
+function adjStock(type, delta){
+  const step = 0.5;
+  if(type==='tea')   openTea   = Math.max(0, Math.min(40, Math.round((openTea   + delta*step)*10)/10));
+  if(type==='black') openBlack = Math.max(0, Math.min(40, Math.round((openBlack + delta*step)*10)/10));
+  if(type==='chrys') openChrys = Math.max(0, Math.min(40, Math.round((openChrys + delta*step)*10)/10));
+  updateGallonUI();
+}
+
+function setStock(type, val){
+  const n = Math.max(0, Math.min(40, parseFloat(val)||0));
+  if(type==='tea')   openTea   = n;
+  if(type==='black') openBlack = n;
+  if(type==='chrys') openChrys = n;
+}
+
+function updateGallonUI(){
+  [{key:'tea', val:()=>openTea}, {key:'black', val:()=>openBlack}, {key:'chrys', val:()=>openChrys}]
+  .forEach(({key, val})=>{
+    const v = val();
+    const qEl = document.getElementById(key+'-qty');
+    if(qEl) qEl.value = v;
+  });
+}
+
+function confirmOpen(){
+  // อ่านจาก input โดยตรง เผื่อพิมพ์เองโดยไม่ได้กด +/-
+  openTea   = Math.max(0, parseFloat(document.getElementById('tea-qty').value)   || 0);
+  openBlack = Math.max(0, parseFloat(document.getElementById('black-qty').value) || 0);
+  openChrys = Math.max(0, parseFloat(document.getElementById('chrys-qty').value) || 0);
+  const teaL=openTea, blackL=openBlack, chrysL=openChrys;
+  const ts=stockMain.find(s=>s.id==='tea');
+  const bs=stockMain.find(s=>s.id==='black');
+  const cs=stockMain.find(s=>s.id==='chrys');
+  if(ts){ ts.current=teaL;   ts.max=teaL;   ts.startMax=teaL; }
+  if(bs){ bs.current=blackL; bs.max=blackL; bs.startMax=blackL; }
+  if(cs){ cs.current=chrysL; cs.max=chrysL; cs.startMax=chrysL; }
+  // set cups & bottles
+  // อ่านค่าจาก input โดยตรง เผื่อพิมพ์เองโดยไม่ได้กด +/-
+  openCup16  = parseInt(document.getElementById('open-cup16').value)  || 0;
+  openCup20  = parseInt(document.getElementById('open-cup20').value)  || 0;
+  openBottle = parseInt(document.getElementById('open-bottle').value) || 0;
+  const c16=stockPack.find(s=>s.id==='cup16');
+  const c20=stockPack.find(s=>s.id==='cup20');
+  const bot=stockPack.find(s=>s.id==='bottle');
+  if(c16){ c16.current=openCup16;  c16.max=openCup16;  c16.startMax=openCup16; }
+  if(c20){ c20.current=openCup20;  c20.max=openCup20;  c20.startMax=openCup20; }
+  if(bot){ bot.current=openBottle; bot.max=openBottle; bot.startMax=openBottle; }
+  saveStock();
+  shopOpen=true;
+  openData={ teaL, blackL, chrysL,
+             teaGallons:openTea, blackGallons:openBlack, chrysGallons:openChrys,
+             cup16:openCup16, cup20:openCup20, bottle:openBottle,
+             time:new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}),
+             date:new Date().toLocaleDateString('th-TH') };
+  localStorage.setItem('dc_shop_open','true');
+  localStorage.setItem('dc_open_data',JSON.stringify(openData));
+  closeModal('modal-open');
+  updateShopStatus();
+  renderMenu();
+  cashDrawer = parseFloat(document.getElementById('open-cash').value) || 999;
+  openData.cashDrawer = cashDrawer;
+  localStorage.setItem('dc_cash', JSON.stringify(cashDrawer));
+  toast('☀️ เปิดร้านแล้ว! ชาไทย '+teaL+'L · ชาดำ '+blackL+'L · เก๊กฮวย '+chrysL+'L · เงินทอน ฿'+cashDrawer);
+  sendToSheets({ type:'OPEN', teaL, blackL, chrysL, cup16:openCup16, cup20:openCup20, bottle:openBottle, time:openData.time, date:openData.date });
+  sendLineNotify(`☀️ DayCha เปิดร้านแล้ว!\n🍵 น้ำชาไทย: ${teaL} ลิตร\n☕ น้ำชาดำ: ${blackL} ลิตร\n🌸 น้ำเก๊กฮวย: ${chrysL} ลิตร\n🥤 แก้ว 16oz: ${openCup16} ใบ\n🧋 แก้ว 20oz: ${openCup20} ใบ\n🍶 ขวด: ${openBottle} ขวด\n⏰ ${openData.time}`);
+}
+
+// ════════════════════════════════════════════════
+// CLOSE SHOP
+// ════════════════════════════════════════════════
+function startCloseShop(){
+  const total=orderHistory.reduce((s,o)=>s+o.total,0);
+  const orders=orderHistory.length;
+  const teaLeft  = stockMain.find(s=>s.id==='tea')?.current.toFixed(2)||'0';
+  const blackLeft= stockMain.find(s=>s.id==='black')?.current.toFixed(2)||'0';
+  const chrysLeft= stockMain.find(s=>s.id==='chrys')?.current.toFixed(2)||'0';
+  document.getElementById('close-summary').innerHTML=`
+    <div class="cs-row"><span class="cs-lbl">ยอดขายรวม</span><span class="cs-val orange">฿${total}</span></div>
+    <div class="cs-row"><span class="cs-lbl">จำนวนออเดอร์</span><span class="cs-val">${orders} ออเดอร์</span></div>
+    <div class="cs-row"><span class="cs-lbl">เงินในลิ้นชัก</span><span class="cs-val green">฿${Math.round(cashDrawer)}</span></div>
+    <div class="cs-row"><span class="cs-lbl">น้ำชาไทยตามระบบ</span><span class="cs-val green">${teaLeft} ลิตร</span></div>
+    <div class="cs-row"><span class="cs-lbl">น้ำชาดำตามระบบ</span><span class="cs-val green">${blackLeft} ลิตร</span></div>
+    <div class="cs-row"><span class="cs-lbl">น้ำเก๊กฮวยตามระบบ</span><span class="cs-val green">${chrysLeft} ลิตร</span></div>
+  `;
+  document.getElementById('close-tea-actual').value='';
+  document.getElementById('close-black-actual').value='';
+  document.getElementById('close-chrys-actual').value='';
+  // inject SVG icons
+  document.getElementById('close-icon-tea').innerHTML   = getIcon('svg:cup_orange');
+  document.getElementById('close-icon-black').innerHTML = getIcon('svg:cup_brown');
+  document.getElementById('close-icon-chrys').innerHTML = getIcon('svg:cup_yellow');
+  document.getElementById('modal-close').classList.add('open');
+}
+
+function confirmClose(){
+  const total=orderHistory.reduce((s,o)=>s+o.total,0);
+  const teaActual  = parseFloat(document.getElementById('close-tea-actual').value)   || null;
+  const blackActual= parseFloat(document.getElementById('close-black-actual').value)  || null;
+  const chrysActual= parseFloat(document.getElementById('close-chrys-actual').value)  || null;
+  const teaSystem  = parseFloat(stockMain.find(s=>s.id==='tea')?.current)  ||0;
+  const blackSystem= parseFloat(stockMain.find(s=>s.id==='black')?.current)||0;
+  const chrysSystem= parseFloat(stockMain.find(s=>s.id==='chrys')?.current)||0;
+
+  shopOpen=false;
+  localStorage.setItem('dc_shop_open','false');
+  closeModal('modal-close');
+  updateShopStatus();
+  renderMenu();
+
+  const payload={
+    type:'CLOSE', total, orders:orderHistory.length,
+    teaSystem:teaSystem.toFixed(2), blackSystem:blackSystem.toFixed(2), chrysSystem:chrysSystem.toFixed(2),
+    teaActual:teaActual!==null?teaActual:'—',
+    blackActual:blackActual!==null?blackActual:'—',
+    chrysActual:chrysActual!==null?chrysActual:'—',
+    time:new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}),
+    date:new Date().toLocaleDateString('th-TH'),
+  };
+  sendToSheets(payload);
+
+  let lineMsg = `🌙 DayCha ปิดร้านแล้ว!\n💰 ยอดขายวันนี้: ฿${total}\n📋 ออเดอร์: ${orderHistory.length} รายการ\n🍵 น้ำชาไทยเหลือ: ${teaActual!==null?teaActual+'L (จริง)':teaSystem.toFixed(2)+'L (ระบบ)'}\n☕ น้ำชาดำเหลือ: ${blackActual!==null?blackActual+'L (จริง)':blackSystem.toFixed(2)+'L (ระบบ)'}\n🌸 น้ำเก๊กฮวยเหลือ: ${chrysActual!==null?chrysActual+'L (จริง)':chrysSystem.toFixed(2)+'L (ระบบ)'}`;
+  sendLineNotify(lineMsg);
+  toast('🌙 ปิดร้านเรียบร้อย ส่งสรุปไปแล้ว!');
+}
+
+// ════════════════════════════════════════════════
+// MODAL / CART
+// ════════════════════════════════════════════════
+let cart=[], selMenu=null, selSize=null, payMethod='cash';
+
+function openModal(id){
+  selMenu=MENU.find(m=>m.id===id);
+  selSize=selMenu.sizes[0];
+  modalQty=1;
+  document.getElementById('m-title').innerHTML=getIcon(selMenu.icon)+' '+selMenu.name;
+  document.getElementById('m-sub').textContent=selMenu.cat;
+  const sz=selMenu.sizes[0];
+  const promoNote=sz.origPrice?` <span style="text-decoration:line-through;color:#bbb;font-size:13px">฿${sz.origPrice}</span>`:'';
+  document.getElementById('m-size-area').innerHTML=
+    `<div class="fixed-note">ขนาด ${sz.oz} · ฿${sz.price}${promoNote}</div>`;
+  updateModalQtyUI();
+  document.getElementById('modal-size').classList.add('open');
+}
+
+function adjModalQty(d){
+  modalQty = Math.max(1, modalQty + d);
+  updateModalQtyUI();
+}
+
+function updateModalQtyUI(){
+  document.getElementById('modal-qty').textContent = modalQty;
+  const price = selMenu ? selMenu.sizes[0].price * modalQty : 0;
+  document.getElementById('modal-subtotal').innerHTML = `รวม <strong>฿${price}</strong>`;
+}
+
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+function addToCart(){
+  if(!selMenu) return;
+  const sz=selMenu.sizes[0];
+  const key=selMenu.id+'_'+sz.oz;
+  const ex=cart.find(c=>c.key===key);
+  if(ex){ ex.qty+=modalQty; }
+  else {
+    cart.push({
+      key, menuId:selMenu.id, name:selMenu.name, cat:selMenu.cat,
+      icon:selMenu.icon, size:sz.oz, price:sz.price, qty:modalQty,
+      tea:selMenu.tea, chrys:selMenu.chrys,
+      cup16:selMenu.cup16||false, cup20:selMenu.cup20||false,
+      bottle:selMenu.bottle||false, isPromo:selMenu.isPromo||false,
+      bottles:selMenu.bottles||0,
+    });
+  }
+  closeModal('modal-size');
+  renderCart();
+  toast('✓ '+selMenu.name+(modalQty>1?' ×'+modalQty:''));
+}
+
+// ── Auto-promo calculation ─────────────────────
+// คืนค่า { thaiSets, mixSets, discount, finalTotal }
+function calcPromo(){
+  // นับจำนวนรวมแต่ละกลุ่ม
+  let thaiQty = 0, mixQty = 0;
+  cart.forEach(c => {
+    const m = MENU.find(x => x.id === c.menuId);
+    if (!m) return;
+    if (m.promoGroup === 'thai') thaiQty += c.qty;
+    if (m.promoGroup === 'mix')  mixQty  += c.qty;
+  });
+  const thaiSets = Math.floor(thaiQty / 3);
+  const mixSets  = Math.floor(mixQty  / 3);
+  const thaiRem  = thaiQty % 3;  // เศษที่คิดราคาปกติ
+  const mixRem   = mixQty  % 3;
+
+  // ราคาปกติของแต่ละกลุ่ม
+  const thaiUnitPrice = 45; // ชาไทยเย็น/ชาไทยขวด
+  const mixUnitPrice  = 30; // ชาดำ/เก๊กฮวย
+
+  // ยอดก่อนโปร (เฉพาะ promo group)
+  const thaiBeforePromo = thaiQty * thaiUnitPrice;
+  const mixBeforePromo  = mixQty  * mixUnitPrice;
+
+  // ยอดหลังโปร
+  const thaiAfterPromo = thaiSets * 120 + thaiRem * thaiUnitPrice;
+  const mixAfterPromo  = mixSets  * 80  + mixRem  * mixUnitPrice;
+
+  const discount = (thaiBeforePromo + mixBeforePromo) - (thaiAfterPromo + mixAfterPromo);
+
+  // ยอดรวมสินค้าที่ไม่ใช่ promo group
+  const otherTotal = cart.reduce((s,c) => {
+    const m = MENU.find(x => x.id === c.menuId);
+    if (!m || m.promoGroup === 'thai' || m.promoGroup === 'mix') return s;
+    return s + c.price * c.qty;
+  }, 0);
+
+  const finalTotal = otherTotal + thaiAfterPromo + mixAfterPromo;
+  return { thaiSets, mixSets, thaiQty, mixQty, discount, finalTotal, thaiAfterPromo, mixAfterPromo };
+}
+
+function getTotal(){ return calcPromo().finalTotal; }
+function getTotalQty(){ return cart.reduce((s,c)=>s+c.qty,0); }
+
+function renderCart(){
+  const el=document.getElementById('order-items');
+  document.getElementById('order-badge').textContent=getTotalQty();
+  if(cart.length===0){
+    el.innerHTML=`<div class="order-empty"><div class="oe-icon">🧋</div><div class="oe-text">ยังไม่มีรายการ</div></div>`;
+    document.getElementById('btn-checkout').disabled=true;
+    document.getElementById('subtotal-lbl').textContent='฿0';
+    document.getElementById('grand-lbl').textContent='฿0';
+    return;
+  }
+
+  const promo = calcPromo();
+
+  // แสดงรายการ
+  let html = cart.map((c,i)=>`
+    <div class="order-item">
+      <div class="oi-row1">
+        <div class="oi-name">${c.icon} ${c.name}</div>
+        <div class="oi-price">฿${c.price*c.qty}</div>
+      </div>
+      <div class="oi-meta">${c.size}</div>
+      <div class="oi-controls">
+        <button class="qty-btn" onclick="chgQty(${i},-1)">−</button>
+        <span class="qty-num">${c.qty}</span>
+        <button class="qty-btn" onclick="chgQty(${i},1)">+</button>
+        <button class="oi-del" onclick="delItem(${i})">🗑</button>
+      </div>
+    </div>`).join('');
+
+  // แสดงโปรที่คำนวณได้
+  if(promo.thaiSets > 0){
+    html += `<div class="order-item" style="border-color:var(--orange);background:var(--orange-pale)">
+      <div class="oi-row1">
+        <div class="oi-name">⭐ โปรชาไทย ×${promo.thaiSets} เซต</div>
+        <div class="oi-price" style="color:var(--green)">฿${promo.thaiSets*120}</div>
+      </div>
+      <div class="oi-meta">ชาไทย ${promo.thaiQty} ชิ้น → ${promo.thaiSets} เซต @ ฿120</div>
+    </div>`;
+  }
+  if(promo.mixSets > 0){
+    html += `<div class="order-item" style="border-color:var(--orange);background:var(--orange-pale)">
+      <div class="oi-row1">
+        <div class="oi-name">✨ โปรเก๊กฮวย/ชาดำ ×${promo.mixSets} เซต</div>
+        <div class="oi-price" style="color:var(--green)">฿${promo.mixSets*80}</div>
+      </div>
+      <div class="oi-meta">ชาดำ/เก๊กฮวย ${promo.mixQty} ชิ้น → ${promo.mixSets} เซต @ ฿80</div>
+    </div>`;
+  }
+  if(promo.discount > 0){
+    html += `<div style="text-align:center;padding:6px 0;font-size:12px;font-weight:700;color:var(--green)">
+      🎉 ประหยัดไป ฿${promo.discount}
+    </div>`;
+  }
+
+  el.innerHTML = html;
+  const t = promo.finalTotal;
+  document.getElementById('subtotal-lbl').textContent='฿'+t;
+  document.getElementById('grand-lbl').textContent='฿'+t;
+  document.getElementById('btn-checkout').disabled=false;
+}
+
+function chgQty(i,d){ cart[i].qty+=d; if(cart[i].qty<=0)cart.splice(i,1); renderCart(); }
+function delItem(i){ cart.splice(i,1); renderCart(); }
+function clearCart(){ cart=[]; renderCart(); }
+
+// ════════════════════════════════════════════════
+// PAYMENT
+// ════════════════════════════════════════════════
+function openPay(){
+  if(!shopOpen){ toast('⚠️ กรุณาเปิดร้านก่อนขาย',true); return; }
+  const t=getTotal();
+  document.getElementById('pay-amt').textContent='฿'+t;
+  document.getElementById('qr-amt').textContent='฿'+t;
+  document.getElementById('pay-items-lbl').textContent=getTotalQty()+' รายการ · เงินในลิ้นชัก ฿'+cashDrawer;
+  document.getElementById('cash-inp').value='';
+  document.getElementById('change-box').style.display='none';
+  payMethod='cash';
+  document.querySelectorAll('.pm-opt').forEach((b,i)=>b.classList.toggle('sel',i===0));
+  document.getElementById('pay-cash-sec').style.display='block';
+  document.getElementById('pay-qr-sec').style.display='none';
+  document.getElementById('modal-pay').classList.add('open');
+}
+
+function selPay(el,m){
+  payMethod=m;
+  document.querySelectorAll('.pm-opt').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('pay-cash-sec').style.display=m==='cash'?'block':'none';
+  document.getElementById('pay-qr-sec').style.display=m==='qr'?'block':'none';
+  document.getElementById('change-box').style.display='none';
+}
+function setCash(v){ document.getElementById('cash-inp').value=v; calcChange(); }
+function calcChange(){
+  const r=parseFloat(document.getElementById('cash-inp').value)||0;
+  const t=getTotal();
+  const box=document.getElementById('change-box');
+  if(r>=t&&r>0){ box.style.display='flex'; document.getElementById('change-val').textContent='฿'+(r-t); }
+  else box.style.display='none';
+}
+
+function confirmPay(){
+  if(payMethod==='cash'){
+    const r=parseFloat(document.getElementById('cash-inp').value)||0;
+    if(r<getTotal()){ toast('⚠️ รับเงินไม่ครบ (ยอด ฿'+getTotal()+')',true); return; }
+  }
+  // deduct stock
+  cart.forEach(c=>{
+    const m = MENU.find(x=>x.id===c.menuId);
+    if(!m) return;
+    deductMl('tea',   (m.tea   ||0) * c.qty);
+    deductMl('black', (m.black ||0) * c.qty);
+    deductMl('chrys', (m.chrys ||0) * c.qty);
+    if(m.cup16)  deductPack('cup16',  c.qty);
+    if(m.cup20)  deductPack('cup20',  c.qty);
+    if(m.bottle) deductPack('bottle', c.qty);
+  });
+  const finalTotal = getTotal();
+  // อัปเดตเงินในลิ้นชัก
+  if(payMethod==='cash'){
+    const received = parseFloat(document.getElementById('cash-inp').value)||0;
+    cashDrawer += received - finalTotal;
+    localStorage.setItem('dc_cash', JSON.stringify(cashDrawer));
+  }
+  const order={
+    time:new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}),
+    date:new Date().toLocaleDateString('th-TH'),
+    items:cart.map(c=>({name:c.name,qty:c.qty,price:c.price*c.qty,size:c.size})),
+    total:finalTotal, method:payMethod,
+  };
+  orderHistory.push(order);
+  localStorage.setItem('dc_hist',JSON.stringify(orderHistory));
+  sendToSheets({type:'ORDER',...order});
+  checkLowStock();
+  closeModal('modal-pay');
+  clearCart();
+  toast('✅ ชำระ ฿'+finalTotal+' · เงินในลิ้นชัก ฿'+Math.round(cashDrawer));
+}
+
+function deductMl(id,ml){
+  const s=stockMain.find(x=>x.id===id); if(!s||!ml)return;
+  s.current=Math.max(0,s.current-ml/1000);
+  saveStock();
+}
+function deductPack(id,qty){
+  const s=stockPack.find(x=>x.id===id); if(!s)return;
+  s.current=Math.max(0,s.current-qty);
+  saveStock();
+}
+function saveStock(){
+  localStorage.setItem('dc_sm',JSON.stringify(stockMain));
+  localStorage.setItem('dc_sp',JSON.stringify(stockPack));
+}
+
+// ════════════════════════════════════════════════
+// STOCK PAGE
+// ════════════════════════════════════════════════
+function stockSt(s){ const p=s.current/s.startMax; return p>0.3?'ok':p>0.1?'warn':'low'; }
+
+function renderStockGrid(items, gridId){
+  document.getElementById(gridId).innerHTML = items.map((s,i) => {
+    // startMax = ค่าตั้งต้นตอนเปิดร้าน ใช้คำนวณ % bar เสมอ
+    if(!s.startMax) s.startMax = s.max;
+    const st  = stockSt(s);
+    const pct = Math.min(100, Math.max(0, (s.current / s.startMax) * 100));
+    const disp = s.isLiquid ? s.current.toFixed(2) : Math.round(s.current);
+    const isLiquid = s.isLiquid;
+
+    // น้ำชา / น้ำเก๊กฮวย → ล็อค แสดงแค่ข้อมูล + ปุ่มเติม
+    if(isLiquid){
+      return `<div class="stock-card ${st==='ok'?'':st}">
+        <div class="sc-name">${s.name}</div>
+        <div class="sc-unit">ตั้งต้นวันนี้: ${s.max} ${s.unit} · กรอกตอนเปิดร้าน</div>
+        <div class="sc-bar-bg"><div class="sc-bar-fill ${st}" style="width:${pct}%"></div></div>
+        <div class="sc-nums">
+          <span class="sc-curr ${st}">${disp} ${s.unit}</span>
+          <span class="sc-max">${s.max} ${s.unit}</span>
+        </div>
+        <div class="sc-btns">
+          <button class="sc-btn restock" onclick="restockLiquid('${gridId}',${i})">+ เติมน้ำ</button>
+        </div>
+      </div>`;
+    }
+
+    // แก้ว / ขวด / หลอด / ถุง → แก้ไขได้โดยตรง
+    return `<div class="stock-card ${st==='ok'?'':st}">
+      <div class="sc-name">${s.name}</div>
+      <div class="sc-unit">ตั้งต้นวันนี้: ${s.max} ${s.unit}</div>
+      <div class="sc-bar-bg"><div class="sc-bar-fill ${st}" style="width:${pct}%"></div></div>
+      <div class="sc-nums" style="margin-bottom:10px">
+        <span class="sc-curr ${st}">${disp} ${s.unit}</span>
+        <span class="sc-max">${s.max} ${s.unit}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:8px;width:100%;box-sizing:border-box">
+        <button onclick="adjPackStock('${gridId}',${i},-1)" style="flex-shrink:0;width:32px;height:32px;border-radius:50%;border:2px solid var(--orange);background:none;color:var(--orange);font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">−</button>
+        <input
+          type="number"
+          value="${Math.round(s.current)}"
+          min="0"
+          style="flex:1;min-width:0;text-align:center;padding:5px 2px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;font-weight:800;color:var(--black);outline:none;width:0"
+          onfocus="this.select()"
+          onchange="setPackStock('${gridId}',${i},this.value)"
+          onkeydown="if(event.key==='Enter')this.blur()"
+        >
+        <button onclick="adjPackStock('${gridId}',${i},1)" style="flex-shrink:0;width:32px;height:32px;border-radius:50%;border:2px solid var(--orange);background:none;color:var(--orange);font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">+</button>
+      </div>
+      <button class="sc-btn restock" style="width:100%" onclick="addPackStock('${gridId}',${i})">+ เติมของเพิ่ม</button>
+    </div>`;
+  }).join('');
+}
+
+function renderStock(){
+  renderStockGrid(stockMain,'stock-main-grid');
+  renderStockGrid(stockPack,'stock-pack-grid');
+}
+
+// น้ำชา/เก๊กฮวย — เติมระหว่างวัน
+let _restockGrid = '', _restockIdx = 0;
+
+function restockLiquid(g, i){
+  _restockGrid = g;
+  _restockIdx  = i;
+  const arr = g==='stock-main-grid' ? stockMain : stockPack;
+  const s   = arr[i];
+  const notOpened = !shopOpen;
+  const iconMap = { tea:'svg:cup_orange', black:'svg:cup_brown', chrys:'svg:cup_yellow' };
+
+  document.getElementById('restock-title').textContent   = notOpened ? 'ตั้งสต้อคตั้งต้น' : 'เติมน้ำระหว่างวัน';
+  document.getElementById('restock-sub').textContent     = s.name;
+  document.getElementById('restock-name').textContent    = s.name;
+  document.getElementById('restock-current').textContent = s.current.toFixed(2);
+  document.getElementById('restock-action-label').textContent = notOpened ? 'ตั้งสต้อคเป็นกี่ลิตร?' : 'เพิ่มกี่ลิตร?';
+  document.getElementById('restock-qty').value = notOpened ? '4' : '0.5';
+  const iconEl = document.getElementById('restock-icon');
+  iconEl.innerHTML = getIcon(iconMap[s.id] || 'svg:cup_orange');
+  document.getElementById('modal-restock-liquid').classList.add('open');
+}
+
+function adjRestockQty(d){
+  const inp = document.getElementById('restock-qty');
+  const n   = Math.max(0, Math.round((parseFloat(inp.value)||0) + d*0.5, 1)*10)/10;
+  inp.value = Math.max(0, Math.round(((parseFloat(inp.value)||0) + d*0.5)*10)/10);
+}
+
+function setRestockQty(v){
+  document.getElementById('restock-qty').value = v;
+}
+
+function confirmRestockLiquid(){
+  const arr = _restockGrid==='stock-main-grid' ? stockMain : stockPack;
+  const s   = arr[_restockIdx];
+  const n   = parseFloat(document.getElementById('restock-qty').value) || 0;
+  if(n <= 0){ toast('⚠️ กรุณาใส่จำนวน', true); return; }
+
+  if(!shopOpen){
+    s.current  = n;
+    s.max      = n;
+    s.startMax = n;
+    saveStock(); renderStock();
+    toast('✓ ตั้งสต้อค '+s.name+' = '+n+'L');
+  } else {
+    s.current += n;
+    s.max     += n;
+    saveStock(); renderStock();
+    toast('✓ เติม '+s.name+' +'+n+'L · คงเหลือ '+s.current.toFixed(2)+'L');
+  }
+  closeModal('modal-restock-liquid');
+}
+
+// แก้ว/ขวด — กด +/− ทีละ 1 (แก้ current เท่านั้น ไม่แตะ max หรือ startMax)
+function adjPackStock(g,i,d){
+  const arr=g==='stock-main-grid'?stockMain:stockPack, s=arr[i];
+  s.current = Math.max(0, Math.min(s.max, s.current+d));
+  saveStock(); renderStock();
+}
+
+// แก้ว/ขวด — พิมพ์ตัวเลขโดยตรง (แก้ current เท่านั้น ไม่แตะ max หรือ startMax)
+function setPackStock(g,i,val){
+  const arr=g==='stock-main-grid'?stockMain:stockPack, s=arr[i];
+  const n=parseInt(val);
+  if(isNaN(n)||n<0)return;
+  s.current = Math.min(n, s.max); // ไม่เกิน max ที่ตั้งไว้
+  saveStock(); renderStock();
+  toast('✓ แก้ไข '+s.name+' เป็น '+s.current+' '+s.unit);
+}
+
+// แก้ว/ขวด — เติมของเพิ่มระหว่างวัน
+function addPackStock(g,i){
+  const arr=g==='stock-main-grid'?stockMain:stockPack, s=arr[i];
+  const v=prompt(`เติม "${s.name}" เพิ่มกี่ ${s.unit}?`,'50');
+  if(v===null)return;
+  const n=parseInt(v);
+  if(!isNaN(n)&&n>0){
+    s.current += n;
+    s.max     += n;
+    // startMax ไม่เปลี่ยน — คือค่าตอนเปิดร้าน ใช้วัด % bar เท่านั้น
+    saveStock(); renderStock();
+    toast('✓ เติม '+s.name+' +'+n+' '+s.unit+' · คงเหลือ '+Math.round(s.current)+' '+s.unit);
+  }
+}
+
+function checkLowStock(){
+  const lowItems=[...stockMain,...stockPack].filter(s=>{
+    const pct=s.current/s.max*100;
+    return pct<=CFG.warnPct;
+  });
+  if(lowItems.length>0){
+    const names=lowItems.map(s=>s.name+' ('+
+      (s.isLiquid?s.current.toFixed(1):Math.round(s.current))+' '+s.unit+')'
+    ).join(', ');
+    sendLineNotify(`⚠️ DayCha สต้อคใกล้หมด!\n${names}`);
+  }
+}
+
+// ════════════════════════════════════════════════
+// SUMMARY
+// ════════════════════════════════════════════════
+function renderSummary(){
+  const total=orderHistory.reduce((s,o)=>s+o.total,0);
+  let cups16=0,cups20=0,bottles=0,teaL=0,blackL=0,chrysL=0;
+  orderHistory.forEach(o=>o.items.forEach(it=>{
+    const m=MENU.find(x=>x.name===it.name); if(!m)return;
+    teaL  +=(m.tea  ||0)*it.qty/1000;
+    blackL+=(m.black||0)*it.qty/1000;
+    chrysL+=(m.chrys||0)*it.qty/1000;
+    if(m.cup16)  cups16  +=it.qty;
+    if(m.cup20)  cups20  +=it.qty;
+    if(m.bottle) bottles +=it.qty;
+  }));
+  const kpis=[
+    {label:'ยอดขายรวม',  value:'฿'+total,          sub:orderHistory.length+' ออเดอร์', orange:true},
+    {label:'แก้ว 16oz',  value:cups16,              sub:'ใบ'},
+    {label:'แก้ว 20oz',  value:cups20,              sub:'ใบ'},
+    {label:'ขวด 200ml',  value:bottles,             sub:'ขวด'},
+    {label:'น้ำชาไทย',   value:teaL.toFixed(2),    sub:'ลิตร'},
+    {label:'น้ำชาดำ',    value:blackL.toFixed(2),   sub:'ลิตร'},
+    {label:'น้ำเก๊กฮวย', value:chrysL.toFixed(2),  sub:'ลิตร'},
+  ];
+  document.getElementById('kpi-grid').innerHTML=kpis.map(k=>
+    `<div class="kpi-card"><div class="kpi-label">${k.label}</div>
+     <div class="kpi-value ${k.orange?'orange':''}">${k.value}</div>
+     <div class="kpi-sub">${k.sub}</div></div>`).join('');
+  const map={};
+  orderHistory.forEach(o=>o.items.forEach(it=>{ const k=it.name; map[k]=(map[k]||0)+it.qty; }));
+  const sorted=Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const mx=sorted[0]?.[1]||1;
+  document.getElementById('best-chart').innerHTML=sorted.length
+    ?sorted.map(([n,v])=>`<div class="bar-row">
+        <div class="bar-name">${n}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${(v/mx)*100}%"><span class="bar-n">${v}</span></div></div>
+      </div>`).join('')
+    :'<p style="color:#ccc;font-size:13px;text-align:center;padding:12px">ยังไม่มีข้อมูล</p>';
+  // ── Payment breakdown ─────────────────────────
+  const payTotals = { cash:0, qr:0, transfer:0, card:0 };
+  orderHistory.forEach(o => {
+    const m = o.method || 'cash';
+    if(payTotals[m] !== undefined) payTotals[m] += o.total;
+  });
+  const startCash   = openData?.cashDrawer ?? cashDrawer;
+  const currentCash = Math.round(startCash + payTotals.cash);
+
+  const payRows = [
+    { icon:'💵', label:'เงินสด',   method:'cash',     amount:payTotals.cash,     badge:'cash' },
+    { icon:'📱', label:'QR Code',  method:'qr',       amount:payTotals.qr,       badge:'qr' },
+    { icon:'🏦', label:'โอนเงิน', method:'transfer', amount:payTotals.transfer, badge:'transfer' },
+    { icon:'💳', label:'บัตร',     method:'card',     amount:payTotals.card,     badge:'card' },
+  ].filter(r => r.amount > 0 || r.method === 'cash');
+
+  const grandNonCash = payTotals.qr + payTotals.transfer + payTotals.card;
+
+  document.getElementById('payment-breakdown').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${payRows.map(r=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--grey-lt);border-radius:10px;border:1.5px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:18px">${r.icon}</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--black)">${r.label}</div>
+              <span class="pay-badge ${r.badge}" style="margin-top:2px;display:inline-block">${orderHistory.filter(o=>(o.method||'cash')===r.method).length} ออเดอร์</span>
+            </div>
+          </div>
+          <div style="font-size:18px;font-weight:900;color:var(--orange-dk)">฿${r.amount}</div>
+        </div>`).join('')}
+      <div style="border-top:2px solid var(--black);margin-top:4px;padding-top:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 2px">
+          <span style="font-size:12px;font-weight:700;color:#aaa">รวมทุกช่องทาง</span>
+          <span style="font-size:20px;font-weight:900;color:var(--black)">฿${total}</span>
+        </div>
+      </div>
+    </div>
+    <div style="background:var(--black);border-radius:12px;padding:14px 16px;margin-top:12px">
+      <div style="font-size:11px;font-weight:700;color:#888;margin-bottom:10px;letter-spacing:.5px">💵 เงินสดในลิ้นชัก</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:12px;color:#666">เงินต้น (เปิดร้าน)</span>
+        <span style="font-size:14px;font-weight:700;color:#888">฿${openData?.cashDrawer||999}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:12px;color:#666">รายรับเงินสด</span>
+        <span style="font-size:14px;font-weight:700;color:var(--green)">+฿${payTotals.cash}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid #333">
+        <span style="font-size:13px;font-weight:700;color:#ccc">เงินในลิ้นชักตอนนี้</span>
+        <span style="font-size:22px;font-weight:900;color:var(--orange)">฿${currentCash}</span>
+      </div>
+    </div>
+  `;
+
+  const ml={cash:'💵 เงินสด',qr:'📱 QR',transfer:'🏦 โอน',card:'💳 บัตร'};
+  const mb={cash:'cash',qr:'qr',transfer:'transfer',card:'card'};
+  document.getElementById('hist-body').innerHTML=[...orderHistory].reverse().slice(0,30).map(o=>
+    `<tr>
+      <td>${o.time}</td>
+      <td style="color:#aaa;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.items.map(i=>i.name).join(', ')}</td>
+      <td style="font-weight:800;color:var(--orange-dk)">฿${o.total}</td>
+      <td><span class="pay-badge ${mb[o.method]||'cash'}">${ml[o.method]||o.method}</span></td>
+    </tr>`).join('')
+    ||'<tr><td colspan="4" style="text-align:center;color:#ccc;padding:20px">ยังไม่มีข้อมูล</td></tr>';
+}
+
+// ════════════════════════════════════════════════
+// SETTINGS UI
+// ════════════════════════════════════════════════
+function loadSettingsUI(){
+  document.getElementById('cfg-script-url').value=CFG.scriptUrl||'';
+  document.getElementById('cfg-line-token').value=CFG.lineToken||'';
+  document.getElementById('cfg-warn-pct').value=CFG.warnPct||20;
+  document.getElementById('cfg-slushy-thai-normal').value=CFG.slushyThaiNormal||65;
+  document.getElementById('cfg-slushy-thai-promo').value=CFG.slushyThaiPromo||59;
+  document.getElementById('cfg-slushy-chrys-normal').value=CFG.slushyChrysNormal||50;
+  document.getElementById('cfg-slushy-chrys-promo').value=CFG.slushyChrysPromo||45;
+}
+function saveScriptUrl(){
+  CFG.scriptUrl=document.getElementById('cfg-script-url').value.trim();
+  saveCfg(); toast('✓ บันทึก Script URL แล้ว');
+}
+function saveLineSettings(){
+  CFG.lineToken=document.getElementById('cfg-line-token').value.trim();
+  CFG.warnPct=parseInt(document.getElementById('cfg-warn-pct').value)||20;
+  saveCfg(); toast('✓ บันทึก LINE Notify แล้ว');
+}
+function savePromoSettings(){
+  CFG.slushyThaiNormal =parseInt(document.getElementById('cfg-slushy-thai-normal').value)||65;
+  CFG.slushyThaiPromo  =parseInt(document.getElementById('cfg-slushy-thai-promo').value)||59;
+  CFG.slushyChrysNormal=parseInt(document.getElementById('cfg-slushy-chrys-normal').value)||50;
+  CFG.slushyChrysPromo =parseInt(document.getElementById('cfg-slushy-chrys-promo').value)||45;
+  saveCfg(); renderMenu(); toast('✓ บันทึกราคา Slushy แล้ว');
+}
+function clearHistory(){
+  if(!confirm('ล้างข้อมูลวันนี้ทั้งหมด?\n(ประวัติออเดอร์, สต้อค, เงินในลิ้นชัก)'))return;
+
+  // reset ประวัติ
+  orderHistory=[];
+  localStorage.setItem('dc_hist','[]');
+
+  // reset เงินลิ้นชัก
+  cashDrawer = 999;
+  localStorage.setItem('dc_cash','999');
+
+  // reset สถานะร้าน
+  shopOpen = false;
+  openData = null;
+  localStorage.setItem('dc_shop_open','false');
+  localStorage.removeItem('dc_open_data');
+
+  // reset สต้อคกลับเป็น defaults
+  stockMain = STOCK_MAIN_DEFAULTS.map(s=>({...s, current:s.max, startMax:s.max}));
+  stockPack = STOCK_PACK_DEFAULTS.map(s=>({...s, current:s.max, startMax:s.max}));
+  saveStock();
+
+  // re-render ทุกหน้า
+  renderMenu();
+  renderCart();
+  renderStock();
+  renderSummary();
+  updateShopStatus();
+
+  toast('✓ ล้างข้อมูลวันนี้ทั้งหมดแล้ว');
+}
+
+// ════════════════════════════════════════════════
+// GOOGLE SHEETS SYNC
+// ════════════════════════════════════════════════
+function setSyncing(on){
+  const dot=document.getElementById('status-dot');
+  if(on) dot.classList.add('syncing');
+  else   dot.classList.remove('syncing');
+}
+
+async function sendToSheets(payload){
+  if(!CFG.scriptUrl) return;
+  setSyncing(true);
+  try {
+    await fetch(CFG.scriptUrl+'?data='+encodeURIComponent(JSON.stringify(payload)),
+      {method:'GET', mode:'no-cors'});
+  } catch(e){ console.warn('Sheets sync failed',e); }
+  setTimeout(()=>setSyncing(false), 1500);
+}
+
+async function testConnection(){
+  if(!CFG.scriptUrl){ toast('⚠️ ยังไม่ได้ใส่ Script URL',true); return; }
+  toast('⏳ กำลังทดสอบ...');
+  try {
+    await fetch(CFG.scriptUrl+'?data='+encodeURIComponent(JSON.stringify({type:'TEST'})),
+      {method:'GET',mode:'no-cors'});
+    document.getElementById('sync-dot').className='sync-dot ok';
+    document.getElementById('sync-status-text').textContent='เชื่อมต่อได้ ✓';
+    toast('✅ เชื่อมต่อ Google Sheets ได้แล้ว!');
+  } catch(e){
+    document.getElementById('sync-dot').className='sync-dot err';
+    document.getElementById('sync-status-text').textContent='เชื่อมต่อไม่ได้ ✗';
+    toast('❌ เชื่อมต่อไม่ได้',true);
+  }
+}
+
+// ════════════════════════════════════════════════
+// LINE NOTIFY
+// ════════════════════════════════════════════════
+async function sendLineNotify(msg){
+  if(!CFG.lineToken) return;
+  // ส่งผ่าน Google Apps Script (เพื่อหลีกเลี่ยง CORS)
+  if(!CFG.scriptUrl) return;
+  try {
+    await fetch(CFG.scriptUrl+'?data='+encodeURIComponent(JSON.stringify({type:'LINE',msg})),
+      {method:'GET',mode:'no-cors'});
+  } catch(e){ console.warn('LINE Notify failed',e); }
+}
+
+// ════════════════════════════════════════════════
+// EXPORT
+// ════════════════════════════════════════════════
+function exportCSV(){
+  const rows=['วันที่,เวลา,เมนู,ขนาด,จำนวน,ยอด,ชำระ'];
+  orderHistory.forEach(o=>o.items.forEach(it=>
+    rows.push(`${o.date||''},${o.time},"${it.name}",${it.size},${it.qty},${it.price},${o.method}`)
+  ));
+  const b=new Blob(['\ufeff'+rows.join('\n')],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(b);
+  a.download='DayCha_'+new Date().toLocaleDateString('th-TH').replace(/\//g,'-')+'.csv';
+  a.click();
+  toast('✓ Export แล้ว');
+}
+
+// ════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════
+function toast(msg,isErr){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.style.background=isErr?'var(--red)':'var(--black)';
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t=setTimeout(()=>t.classList.remove('show'),2300);
+}
+
+// ── INIT ─────────────────────────────────────
+renderMenu();
+renderCart();
+updateShopStatus();
+</script>
+</body>
+</html>
